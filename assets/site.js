@@ -69,3 +69,17 @@ if (jumpTo) {
   const el = document.getElementById(jumpTo);
   if (el) setTimeout(() => el.scrollIntoView({ behavior: 'instant' }), 400);
 }
+
+// Safari/iOS: force hero video playback (attributes alone are not always honoured)
+const heroVid = document.querySelector('.hero video');
+if (heroVid) {
+  heroVid.muted = true;
+  heroVid.defaultMuted = true;
+  heroVid.setAttribute('muted', '');
+  const tryPlay = () => { const p = heroVid.play(); if (p) p.catch(() => {}); };
+  tryPlay();
+  addEventListener('touchstart', tryPlay, { once: true, passive: true });
+  addEventListener('click', tryPlay, { once: true });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) tryPlay(); });
+  heroVid.addEventListener('loadedmetadata', tryPlay);
+}
