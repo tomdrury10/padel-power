@@ -656,3 +656,27 @@ html.flat img{content-visibility:visible}
   .addr{font-size:16px}
   .article-body p{font-size:15.5px}
 }
+
+/* ---------- social section layout v2 (Safari-proof) ---------- */
+.reels{display:block !important}
+.reel-row{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(14px,1.6vw,24px)}
+.reel{aspect-ratio:9/13}
+.social-stat{
+  margin-top:clamp(14px,1.6vw,24px);
+  flex-direction:row;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:24px;
+}
+.social-stat .nums{flex-direction:row;flex-wrap:wrap;gap:clamp(24px,4vw,64px)}
+.social-stat .follow{flex-direction:row;flex-wrap:wrap;gap:12px}
+@media(max-width:760px){
+  .reel-row{
+    display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;
+    gap:14px;scrollbar-width:none;
+    margin-inline:calc(-1 * var(--pad));padding-inline:var(--pad);
+  }
+  .reel-row::-webkit-scrollbar{display:none}
+  .reel-row .reel{flex:0 0 auto;width:70vw;height:98vw;aspect-ratio:auto;scroll-snap-align:center}
+  .social-stat{margin-top:16px;padding:22px}
+  .social-stat .nums{gap:22px}
+  .social-stat .follow{width:100%}
+  .social-stat .follow .btn{flex:1;justify-content:center}
+}
