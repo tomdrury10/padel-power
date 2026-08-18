@@ -28,6 +28,20 @@ const io = new IntersectionObserver(entries => {
     }
   });
 }, { threshold: .15, rootMargin: '0px 0px -40px 0px' });
+// safety net: reveal anything the viewport has already passed (instant anchor jumps skip the observer)
+const revealPassed = () => {
+  document.querySelectorAll('.rv:not(.in)').forEach(el => {
+    if (el.getBoundingClientRect().top < innerHeight * 0.92) el.classList.add('in');
+  });
+};
+let rvTick = false;
+addEventListener('scroll', () => {
+  if (rvTick) return; rvTick = true;
+  requestAnimationFrame(() => { revealPassed(); rvTick = false; });
+}, { passive: true });
+addEventListener('hashchange', () => setTimeout(revealPassed, 60));
+addEventListener('load', () => setTimeout(revealPassed, 120));
+
 if (new URLSearchParams(location.search).has('flat')) {
   document.documentElement.classList.add('flat');
   document.querySelectorAll('.rv').forEach(el => el.classList.add('in'));
