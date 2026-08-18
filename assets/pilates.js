@@ -36,7 +36,7 @@ function renderClasses() {
     if (mine)            action = '<span class="pbooked">Booked ✓</span>';
     else if (spots <= 0) action = '<span class="pfull">Class full</span>';
     else if (closed)     action = '<span class="pfull">Closed · book 24h ahead</span>';
-    else                 action = `<a class="btn btn-blue pbook" href="book.html?date=${iso(activeDate)}&time=${time}&type=${typeKey}">Book <span class="arr">→</span></a>`;
+    else                 action = `<a class="btn btn-blue pbook" href="../book/?date=${iso(activeDate)}&time=${time}&type=${typeKey}">Book <span class="arr">→</span></a>`;
     return `
     <div class="pclass ${spots <= 0 || closed ? 'off' : ''}">
       <div class="pc-time"><b>${time}</b><span>1 hour</span></div>

@@ -78,7 +78,7 @@
       btn.disabled = false;
       if (String(err.message).includes('class_full')) {
         alert('Sorry, that class has just filled up. Pick another session on the timetable.');
-        location.href = 'pilates.html#book';
+        location.href = '../pilates/#book';
       } else {
         alert('Something went wrong saving your booking. Please try again.');
       }

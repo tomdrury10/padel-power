@@ -6,7 +6,7 @@
   --line-soft:rgba(242,240,235,.07);
   --paper:#f2f0eb;
   --paper-dim:rgba(242,240,235,.62);
-  --paper-faint:rgba(242,240,235,.38);
+  --paper-faint:rgba(242,240,235,.52);   /* .38 failed WCAG AA contrast on small labels */
   --blue:#2ba6e8;
   --blue-deep:#1274ad;
   --tan:#c9905c;
@@ -1408,6 +1408,21 @@ html.flat img{content-visibility:visible}
 .lg-back{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--paper-faint);transition:.25s}
 .lg-back:hover{color:var(--paper)}
 
+.d2-badge{
+  margin-left:auto;background:var(--blue);color:#08202e;border-radius:99px;
+  font-family:var(--mono);font-size:9px;font-weight:600;padding:2px 7px;
+}
+.d2-enq{border-bottom:1px solid var(--ln);padding:16px 2px}
+.d2-enq:last-child{border-bottom:none}
+.d2-enq.done{opacity:.55}
+.d2-enq .hd{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.d2-enq .hd > div{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.d2-enq b{font-size:14px;font-weight:660;color:var(--tx)}
+.d2-enq .when{font-family:var(--mono);font-size:10px;color:var(--tx3)}
+.d2-enq .msg{color:var(--tx2);font-size:13.5px;line-height:1.6;margin:10px 0 12px;white-space:pre-wrap}
+.d2-enq .ft{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.d2-enq .ft a{font-family:var(--mono);font-size:11.5px;color:var(--fullc)}
+.d2-enq .ft a:hover{text-decoration:underline}
 .d2-user{display:flex;flex-direction:column;gap:8px}
 .d2-user-em{
   font-family:var(--mono);font-size:9px;letter-spacing:.06em;color:var(--tx3);
@@ -1484,6 +1499,26 @@ html.flat img{content-visibility:visible}
   .d2-rules{grid-template-columns:1fr}
   .d2-table .ct{word-break:break-all}
 }
+
+/* contact form states */
+.cf-note{
+  background:rgba(224,104,90,.12);border:1px solid rgba(224,104,90,.5);color:#e8998e;
+  border-radius:12px;padding:12px 14px;font-size:13.5px;
+}
+.cf-small{font-size:12.5px;color:var(--paper-faint);margin-top:-4px}
+.cf-small a{color:var(--paper-dim);text-decoration:underline}
+.cf-small a:hover{color:var(--blue)}
+.cf-done{
+  border:1px solid var(--line);border-radius:20px;padding:clamp(26px,4vw,38px);
+  background:linear-gradient(165deg,var(--panel-2) 0%,var(--panel) 100%);text-align:center;
+}
+.cf-done .tick{
+  width:60px;height:60px;border-radius:50%;background:var(--blue);color:var(--ink);
+  display:grid;place-items:center;margin:0 auto 18px;
+}
+.cf-done .tick svg{width:28px;height:28px}
+.cf-done h3{font-variation-settings:'wdth' 114;font-style:italic;font-weight:850;text-transform:uppercase;font-size:24px}
+.cf-done p{color:var(--paper-dim);font-size:14.5px;margin:12px 0 24px}
 
 /* article meta: drop the dot separators once the line wraps */
 @media(max-width:560px){

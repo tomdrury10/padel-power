@@ -58,11 +58,11 @@ function upcoming(days = RULES.windowDays) {
 }
 
 /* ---------- navigation ---------- */
-const TITLES = { overview: 'Overview', schedule: 'Schedule', bookings: 'Bookings', settings: 'Settings' };
+const TITLES = { overview: 'Overview', schedule: 'Schedule', bookings: 'Bookings', enquiries: 'Enquiries', settings: 'Settings' };
 function goto(p) {
   page = p;
   document.querySelectorAll('.d2-nav button').forEach(b => b.classList.toggle('on', b.dataset.page === p));
-  ['Overview', 'Schedule', 'Bookings', 'Settings'].forEach(n => { $('pg' + n).hidden = n.toLowerCase() !== p; });
+  ['Overview', 'Schedule', 'Bookings', 'Enquiries', 'Settings'].forEach(n => { $('pg' + n).hidden = n.toLowerCase() !== p; });
   $('pageTitle').textContent = TITLES[p];
   render();
 }
@@ -73,6 +73,7 @@ function render() {
   if (page === 'overview') renderOverview();
   if (page === 'schedule') renderSchedule();
   if (page === 'bookings') renderBookings();
+  if (page === 'enquiries') renderEnquiries();
   if (page === 'settings') renderSettings();
 }
 function refresh() { render(); }
@@ -312,6 +313,51 @@ $('srcFilter').querySelectorAll('button').forEach(b =>
   }));
 
 /* ============================================================
+   ENQUIRIES (contact form submissions)
+   ============================================================ */
+let enqRows = [], enqState = 'new';
+async function loadEnquiries() {
+  enqRows = await ppApi('enquiries?select=*&order=created_at.desc');
+  const unread = enqRows.filter(e => !e.handled_at).length;
+  const badge = $('enqBadge');
+  badge.textContent = unread;
+  badge.hidden = unread === 0;
+}
+function renderEnquiries() {
+  const rows = enqState === 'new' ? enqRows.filter(e => !e.handled_at) : enqRows;
+  $('enqList').innerHTML = rows.length ? rows.map(e => `
+    <div class="d2-enq ${e.handled_at ? 'done' : ''}">
+      <div class="hd">
+        <div>
+          <b>${esc(e.name)}</b>
+          <span class="d2-tag">${esc(e.topic || 'Enquiry')}</span>
+        </div>
+        <span class="when">${new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(e.created_at))}</span>
+      </div>
+      <p class="msg">${esc(e.message)}</p>
+      <div class="ft">
+        <a href="mailto:${encodeURIComponent(e.email)}">${esc(e.email)}</a>
+        ${e.phone ? `<a href="tel:${encodeURIComponent(e.phone)}">${esc(e.phone)}</a>` : ''}
+        ${e.handled_at ? '<span class="d2-tag">Handled</span>' : `<button class="d2-btn ghost sm enq-done" data-id="${e.id}">Mark handled</button>`}
+      </div>
+    </div>`).join('') : '<p class="d2-empty">No enquiries here.</p>';
+  $('enqList').querySelectorAll('.enq-done').forEach(b =>
+    b.addEventListener('click', async () => {
+      try {
+        await ppApi(`enquiries?id=eq.${b.dataset.id}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ handled_at: new Date().toISOString() }) });
+        await loadEnquiries();
+      } catch { alert('Could not update that enquiry.'); }
+      renderEnquiries();
+    }));
+}
+$('enqFilter').querySelectorAll('button').forEach(b =>
+  b.addEventListener('click', () => {
+    enqState = b.dataset.state;
+    $('enqFilter').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    renderEnquiries();
+  }));
+
+/* ============================================================
    SETTINGS
    ============================================================ */
 function renderSettings() {
@@ -466,9 +512,9 @@ clock(); setInterval(clock, 30000);
 /* ---------- staff session ---------- */
 $('signOut').addEventListener('click', () => {
   Auth.signOut();
-  location.replace('login.html');
+  location.replace('../login/');
 });
-if (!Auth.session()) location.replace('login.html?next=' + encodeURIComponent(location.pathname.split('/').pop() + location.search));
+if (!Auth.session()) location.replace('../login/?next=' + encodeURIComponent(location.pathname + location.search));
 $('userEmail').textContent = Auth.email() || '';
 // keep the access token fresh while the dashboard is open
 setInterval(() => { Auth.ensure().catch(() => {}); }, 10 * 60 * 1000);
@@ -476,13 +522,14 @@ setInterval(() => { Auth.ensure().catch(() => {}); }, 10 * 60 * 1000);
 const startPage = new URLSearchParams(location.search).get('page');
 ppReady
   .then(async () => {
-    if (!await Auth.ensure()) { location.replace('login.html'); throw new Error('signed_out'); }
-    return Store.loadBookings();
+    if (!await Auth.ensure()) { location.replace('../login/'); throw new Error('signed_out'); }
+    await Store.loadBookings();
+    return loadEnquiries();
   })
   .then(() => {
     goto(TITLES[startPage] ? startPage : 'overview');
     setInterval(async () => {
-      try { await Store.loadBookings(); render(); } catch {}
+      try { await Store.loadBookings(); await loadEnquiries(); render(); } catch {}
     }, 60000);
   })
   .catch(err => {

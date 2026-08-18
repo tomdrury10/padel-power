@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+
+# staff and transactional pages: not for search engines
+Disallow: /admin/
+Disallow: /login/
+Disallow: /book/
+
+Sitemap: https://tomdrury10.github.io/padel-power/sitemap.xml

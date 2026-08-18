@@ -70,12 +70,13 @@ async function ppApi(path, opts = {}) {
       ...(opts.headers || {}),
     },
   });
+  const body = await res.text();          // minimal-return writes come back empty
   if (!res.ok) {
     let msg = 'request_failed';
-    try { msg = (await res.json()).message || msg; } catch {}
+    try { msg = JSON.parse(body).message || msg; } catch {}
     throw new Error(msg);
   }
-  return res.status === 204 ? null : res.json();
+  return body ? JSON.parse(body) : null;
 }
 
 /* ---------- live config (filled from the database) ---------- */
