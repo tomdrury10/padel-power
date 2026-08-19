@@ -378,7 +378,28 @@ function renderSettings() {
   f.rMin.value = RULES.minRiders;
   f.rCutoff.value = RULES.cutoffHours;
   f.rWindow.value = RULES.windowDays;
+  $('pwEmail').textContent = Auth.email() || '';
 }
+$('pwForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const f = e.target;
+  const current = f.pwCurrent.value, next = f.pwNew.value;
+  if (next !== f.pwConfirm.value) { alert('New passwords do not match.'); return; }
+  if (next === current) { alert('The new password must be different from the current one.'); return; }
+  const btn = f.querySelector('button[type="submit"]');
+  btn.disabled = true;
+  try {
+    await Auth.changePassword(current, next);
+    f.reset();
+    $('pwSaved').hidden = false;
+    setTimeout(() => { $('pwSaved').hidden = true; }, 3000);
+  } catch (err) {
+    alert(String(err.message) === 'wrong_password'
+      ? 'Your current password is incorrect.'
+      : 'Could not update the password. ' + String(err.message).replace(/^update_failed$/, 'Please try again.'));
+  }
+  btn.disabled = false;
+});
 $('newType').addEventListener('submit', async e => {
   e.preventDefault();
   const f = e.target;

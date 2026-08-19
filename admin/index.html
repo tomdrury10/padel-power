@@ -193,6 +193,21 @@
           </form>
         </div>
       </div>
+      <div class="d2-cols even" style="margin-top:16px">
+        <div class="d2-card">
+          <div class="d2-card-head"><h2>Your account</h2></div>
+          <p class="d2-sub">Signed in as <b id="pwEmail"></b>. Update your password below. You stay signed in on this device.</p>
+          <form class="d2-rules" id="pwForm">
+            <label style="grid-column:1 / -1">Current password<input name="pwCurrent" type="password" autocomplete="current-password" required></label>
+            <label>New password<input name="pwNew" type="password" autocomplete="new-password" minlength="8" required></label>
+            <label>Confirm new password<input name="pwConfirm" type="password" autocomplete="new-password" minlength="8" required></label>
+            <div class="d2-form-row">
+              <button class="d2-btn primary" type="submit">Update password</button>
+              <span class="d2-saved" id="pwSaved" hidden>Password updated</span>
+            </div>
+          </form>
+        </div>
+      </div>
     </section>
   </main>
 </div>
@@ -267,7 +282,7 @@
 
 <a class="juno-badge" href="https://getjuno.uk" target="_blank" rel="noopener" aria-label="Built by Juno"><span class="dot"></span>Built by <b>Juno</b></a>
 
-<script src="../assets/pilates-core.js?v=12"></script>
-<script src="../assets/admin.js?v=14"></script>
+<script src="../assets/pilates-core.js?v=13"></script>
+<script src="../assets/admin.js?v=15"></script>
 </body>
 </html>

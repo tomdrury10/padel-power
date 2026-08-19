@@ -55,6 +55,28 @@ const Auth = {
   },
   // valid token, refreshing if it has expired
   async ensure() { return this.token() || await this.refresh(); },
+  // change the signed-in user's password. Proves the current password
+  // first (fresh sign-in), then updates it on the auth server.
+  async changePassword(current, next) {
+    const check = await fetch(`${PP_URL}/auth/v1/token?grant_type=password`, {
+      method: 'POST',
+      headers: { apikey: PP_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: this.email(), password: current }),
+    });
+    const session = await check.json();
+    if (!check.ok) throw new Error('wrong_password');
+    this.save(session);
+    const res = await fetch(`${PP_URL}/auth/v1/user`, {
+      method: 'PUT',
+      headers: { apikey: PP_KEY, Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: next }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error_description || data.msg || 'update_failed');
+    }
+    return true;
+  },
   signOut() { localStorage.removeItem(this.key); },
 };
 
