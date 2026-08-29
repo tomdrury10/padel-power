@@ -299,6 +299,10 @@ section{position:relative}
 .lcard:hover::after{transform:scale(1.25);border-color:rgba(43,166,232,.5)}
 @media(max-width:980px){.cards{grid-template-columns:1fr 1fr}}
 @media(max-width:640px){.cards{grid-template-columns:1fr}}
+.cards.four{grid-template-columns:repeat(4,1fr)}
+.cards.two{grid-template-columns:1fr 1fr}
+@media(max-width:1100px){.cards.four{grid-template-columns:1fr 1fr}}
+@media(max-width:760px){.cards.four,.cards.two{grid-template-columns:1fr}}
 
 /* ---------- membership / price card ---------- */
 .membership{background:var(--panel);border-block:1px solid var(--line-soft);overflow:hidden}
@@ -372,6 +376,9 @@ section{position:relative}
 }
 .faq-item[open] summary .pm{transform:rotate(45deg);background:var(--blue);color:var(--ink);border-color:var(--blue)}
 .faq-item .ans{padding:0 44px 24px 4px;color:var(--paper-dim);font-size:15.5px;max-width:70ch}
+.faq-item .ans ol,.faq-item .ans ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:10px}
+.faq-item .ans li{line-height:1.65}
+.faq-item .ans li::marker{color:var(--blue);font-family:var(--mono);font-size:13px}
 
 /* ---------- loyalty tiers ---------- */
 .tiers{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(14px,1.6vw,24px);align-items:stretch}
