@@ -27,6 +27,8 @@
   const booked = Store.count(id);
   const spots = RULES.maxRiders - booked;
   const closed = withinCutoff(id);
+  const price = t.price;   // pence, or null while classes are free to reserve
+  const session = q.get('session');   // set when returning from Stripe Checkout
 
   /* ---- render ---- */
   const [name, accent] = splitTitle(t.name);
@@ -49,7 +51,9 @@
   const form = document.getElementById('evForm');
   const small = document.querySelector('.ev-small');
 
-  if (Store.mine(id)) {
+  if (session) {
+    handleReturn();
+  } else if (Store.mine(id)) {
     spotsEl.textContent = 'Booked ✓';
     spotsEl.classList.add('ok');
     form.style.display = 'none'; small.style.display = 'none';
@@ -61,8 +65,13 @@
     spotsEl.textContent = 'Booking closed';
     lockCard('Bookings close 24 hours before class so instructors know who’s coming. Pick a later session.');
   } else {
-    spotsEl.textContent = `${spots} of ${RULES.maxRiders} beds left`;
+    spotsEl.textContent = (price ? `${gbp(price)} · ` : '') + `${spots} of ${RULES.maxRiders} beds left`;
     if (spots <= 2) spotsEl.classList.add('low');
+    if (price) {
+      const btn = form.querySelector('button[type=submit]');
+      btn.innerHTML = `Book and pay ${gbp(price)} <span class="arr">→</span>`;
+      small.textContent = 'Secure card payment. Cancel up to 24 hours before class.';
+    }
   }
 
   form.addEventListener('submit', async e => {
@@ -70,15 +79,29 @@
     const f = e.target;
     const btn = f.querySelector('button[type=submit]');
     btn.disabled = true;
+    const person = { name: f.evName.value, email: f.evEmail.value, phone: `${f.evCode.value} ${f.evPhone.value.trim().replace(/^0+/, '')}` };
     try {
-      await Store.book(id, { name: f.evName.value, email: f.evEmail.value, phone: `${f.evCode.value} ${f.evPhone.value.trim().replace(/^0+/, '')}` });
+      if (price) {
+        btn.textContent = 'Taking you to payment…';
+        const { url } = await Store.checkout(id, person);
+        location.href = url;
+        return;
+      }
+      await Store.book(id, person);
       form.style.display = 'none'; small.style.display = 'none';
       showDone();
     } catch (err) {
       btn.disabled = false;
-      if (String(err.message).includes('class_full')) {
+      if (price) btn.innerHTML = `Book and pay ${gbp(price)} <span class="arr">→</span>`;
+      const msg = String(err.message);
+      if (msg.includes('class_full')) {
         alert('Sorry, that class has just filled up. Pick another session on the timetable.');
         location.href = '../pilates/#book';
+      } else if (msg.includes('payment_required')) {
+        alert('This class is now paid at booking. Reload the page to continue.');
+        location.reload();
+      } else if (msg.includes('payments_not_configured')) {
+        alert('Online payment is not available right now. Please call the club to book.');
       } else {
         alert('Something went wrong saving your booking. Please try again.');
       }
@@ -88,6 +111,36 @@
   function showDone() {
     document.getElementById('evDoneMeta').textContent = `${fmtFull.format(day)} · ${time} · 1 hour`;
     document.getElementById('evDone').style.display = '';
+  }
+
+  // returning from Stripe Checkout: confirm against the server, allowing a
+  // few seconds for the webhook to record the booking
+  async function handleReturn() {
+    form.style.display = 'none'; small.style.display = 'none';
+    spotsEl.textContent = 'Confirming…';
+    for (let i = 0; i < 6; i++) {
+      let s;
+      try { s = await Store.checkoutStatus(session); } catch { break; }
+      if (s.booked) {
+        My.add(id);
+        spotsEl.textContent = 'Booked ✓';
+        spotsEl.classList.add('ok');
+        showDone();
+        return;
+      }
+      if (s.refunded) {
+        spotsEl.textContent = 'Refunded';
+        small.style.display = '';
+        small.textContent = 'That class filled up before your payment completed, so your card has been refunded in full. Pick another session on the timetable.';
+        return;
+      }
+      if (!s.paid && i >= 1) break;   // payment abandoned or failed
+      await new Promise(r => setTimeout(r, 1500));
+    }
+    // no confirmed payment: put the form back
+    form.style.display = ''; small.style.display = '';
+    spotsEl.textContent = (price ? `${gbp(price)} · ` : '') + `${spots} of ${RULES.maxRiders} beds left`;
+    if (price) small.textContent = 'Secure card payment. Cancel up to 24 hours before class.';
   }
   function lockCard(msg) {
     form.style.display = 'none';

@@ -101,6 +101,23 @@ async function ppApi(path, opts = {}) {
   return body ? JSON.parse(body) : null;
 }
 
+// edge functions (Stripe checkout, refunds)
+async function ppFn(path, opts = {}) {
+  const staff = Auth.token();
+  const res = await fetch(`${PP_URL}/functions/v1/${path}`, {
+    ...opts,
+    headers: {
+      apikey: PP_KEY,
+      Authorization: `Bearer ${staff || PP_KEY}`,
+      'Content-Type': 'application/json',
+      ...(opts.headers || {}),
+    },
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'request_failed');
+  return data;
+}
+
 /* ---------- live config (filled from the database) ---------- */
 const RULES = {
   openingDate: '2026-09-01',
@@ -197,6 +214,31 @@ const Store = {
     return { ok: true };
   },
 
+  // paid public booking: create a Stripe Checkout session and hand back its URL
+  async checkout(classId, person) {
+    return ppFn('checkout', {
+      method: 'POST',
+      body: JSON.stringify({
+        class_id: classId,
+        name: person.name,
+        email: person.email,
+        phone: person.phone,
+        return_url: location.origin + location.pathname + location.search,
+      }),
+    });
+  },
+  async checkoutStatus(sessionId) {
+    return ppFn(`checkout?session=${encodeURIComponent(sessionId)}`);
+  },
+  // staff: refund paid bookings via Stripe and soft-cancel them
+  async refund(bookingIds) {
+    const data = await ppFn('refund', { method: 'POST', body: JSON.stringify({ booking_ids: bookingIds }) });
+    cache.bookings.filter(b => bookingIds.includes(b.id) && data.results?.[b.id] === 'refunded')
+      .forEach(b => { cache.counts[b.classId] = Math.max(0, (cache.counts[b.classId] || 0) - 1); });
+    cache.bookings = cache.bookings.filter(b => !(bookingIds.includes(b.id) && data.results?.[b.id] === 'refunded'));
+    return data;
+  },
+
   async cancel(classId, booking) {
     await ppApi(`bookings?id=eq.${booking.id}`, {
       method: 'PATCH',
@@ -275,8 +317,11 @@ function mapBooking(r) {
   return {
     id: r.id, classId: r.class_id, name: r.name, email: r.email,
     phone: r.phone, source: r.source, at: Date.parse(r.created_at),
+    amount: r.amount_pence || null, paid: !!r.paid_at, refunded: !!r.refunded_at,
   };
 }
+
+const gbp = pence => '£' + (pence % 100 === 0 ? pence / 100 : (pence / 100).toFixed(2));
 
 /* ---------- staff settings ---------- */
 const Settings = {
@@ -289,6 +334,14 @@ const Settings = {
       }),
     });
     Object.assign(RULES, rules);
+  },
+  async setPrice(key, pence) {
+    await ppApi(`class_types?key=eq.${encodeURIComponent(key)}`, {
+      method: 'PATCH',
+      headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify({ price_pence: pence }),
+    });
+    if (CLASS_TYPES[key]) CLASS_TYPES[key].price = pence;
   },
   async addType(key, type) {
     await ppApi('class_types', {
@@ -320,7 +373,7 @@ async function ppInit() {
     ppApi('booking_counts?select=*'),
   ]);
   cancelled.forEach(c => { (cache.cancelled[c.class_date] = cache.cancelled[c.class_date] || new Set()).add(c.start_time); });
-  types.forEach(t => { CLASS_TYPES[t.key] = { name: t.name, level: t.level, desc: t.descr, custom: t.custom }; });
+  types.forEach(t => { CLASS_TYPES[t.key] = { name: t.name, level: t.level, desc: t.descr, custom: t.custom, price: t.price_pence || null }; });
   slots.forEach(s => { (TIMETABLE[s.weekday] = TIMETABLE[s.weekday] || []).push([s.start_time, s.type_key]); });
   Object.values(TIMETABLE).forEach(day => day.sort((a, b) => a[0].localeCompare(b[0])));
   custom.forEach(c => { (cache.custom[c.class_date] = cache.custom[c.class_date] || []).push({ time: c.start_time, type: c.type_key, id: c.id }); });

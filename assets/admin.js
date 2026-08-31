@@ -226,7 +226,7 @@ function renderDetail() {
       ${c.cancelled ? '<p class="d2-empty">This class is cancelled. It no longer appears on the public timetable.</p>' : ''}
       ${people.length ? people.map(p => `
         <div class="d2-att">
-          <div><b>${esc(p.name)}</b><span>${esc(p.phone || '')}${p.email ? ' · ' + esc(p.email) : ''}</span></div>
+          <div><b>${esc(p.name)}</b><span>${esc(p.phone || '')}${p.email ? ' · ' + esc(p.email) : ''}${p.paid ? ' · Paid ' + gbp(p.amount) : ''}</span></div>
           <span class="d2-tag ${p.source === 'Online' ? 'online' : ''}">${esc(p.source)}</span>
           <button class="d2-x" data-bid="${p.id}" title="Remove booking"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
         </div>`).join('') : '<p class="d2-empty">No bookings yet.</p>'}
@@ -239,8 +239,19 @@ function renderDetail() {
     </div>`;
   el.querySelectorAll('.d2-x').forEach(b =>
     b.addEventListener('click', async () => {
-      if (!confirm('Remove this booking?')) return;
-      try { await Store.cancel(c.id, { id: b.dataset.bid }); } catch { alert('Could not remove the booking. Please try again.'); }
+      const p = people.find(x => x.id === b.dataset.bid);
+      const paidBooking = p && p.paid && !p.refunded;
+      if (!confirm(paidBooking
+        ? `Remove this booking? ${gbp(p.amount)} will be refunded to their card automatically.`
+        : 'Remove this booking?')) return;
+      try {
+        if (paidBooking) {
+          const { results } = await Store.refund([p.id]);
+          if (results[p.id] !== 'refunded') throw new Error(results[p.id]);
+        } else {
+          await Store.cancel(c.id, { id: b.dataset.bid });
+        }
+      } catch { alert('Could not remove the booking. Please try again.'); }
       refresh();
     }));
   const add = $('detAdd');
@@ -249,12 +260,23 @@ function renderDetail() {
   const cancelCls = $('detCancelClass');
   if (cancelCls) cancelCls.addEventListener('click', async () => {
     const n = people.length;
+    const paidPeople = people.filter(p => p.paid && !p.refunded);
     const msg = n
-      ? `Cancel this class?\n\n${n} booking${n === 1 ? '' : 's'} will be cancelled and the class will come off the public timetable. Contact those members yourself:\n\n`
+      ? `Cancel this class?\n\n${n} booking${n === 1 ? '' : 's'} will be cancelled and the class will come off the public timetable.`
+        + (paidPeople.length ? `\n${paidPeople.length} paid booking${paidPeople.length === 1 ? '' : 's'} will be refunded to their card automatically.` : '')
+        + `\nContact those members yourself:\n\n`
         + people.map(p => `${p.name} · ${p.phone}`).join('\n')
       : 'Cancel this class? It will come off the public timetable.';
     if (!confirm(msg)) return;
     try {
+      if (paidPeople.length) {
+        const { results } = await Store.refund(paidPeople.map(p => p.id));
+        const failed = paidPeople.filter(p => results[p.id] !== 'refunded');
+        if (failed.length) {
+          alert('Could not refund: ' + failed.map(p => p.name).join(', ') + '. The class has NOT been cancelled. Please try again.');
+          refresh(); return;
+        }
+      }
       await Store.cancelClass(iso(c.date), c.time, { custom: c.custom });
       if (c.custom) selectedClass = null;
     } catch { alert('Could not cancel the class. Please try again.'); }
@@ -292,15 +314,26 @@ function renderBookings() {
       <td class="ct">${esc(b.phone || '')}${b.email ? '<br>' + esc(b.email) : ''}</td>
       <td>${esc(b.cls.t.name)}</td>
       <td class="ct">${fmtDay.format(b.cls.date)} ${fmtDate.format(b.cls.date)} · ${b.cls.time}</td>
-      <td><span class="d2-tag ${(b.source || 'Online') === 'Online' ? 'online' : ''}">${esc(b.source || 'Online')}</span></td>
+      <td><span class="d2-tag ${(b.source || 'Online') === 'Online' ? 'online' : ''}">${esc(b.source || 'Online')}</span>${b.paid ? `<br><span class="d2-tag" style="margin-top:5px">Paid ${gbp(b.amount)}</span>` : ''}</td>
       <td class="rm"><button class="d2-x" data-id="${b.classId}" data-bid="${b.id}" title="Remove booking"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M5 5l14 14M19 5L5 19"/></svg></button></td>
     </tr>`).join('');
   $('bkEmpty').hidden = rows.length > 0;
   $('bkTable').querySelector('thead').style.display = rows.length ? '' : 'none';
   $('bkTable').querySelectorAll('.d2-x').forEach(b =>
     b.addEventListener('click', async () => {
-      if (!confirm('Remove this booking?')) return;
-      try { await Store.cancel(b.dataset.id, { id: b.dataset.bid }); } catch { alert('Could not remove the booking. Please try again.'); }
+      const bk = rows.find(x => x.id === b.dataset.bid);
+      const paidBooking = bk && bk.paid && !bk.refunded;
+      if (!confirm(paidBooking
+        ? `Remove this booking? ${gbp(bk.amount)} will be refunded to their card automatically.`
+        : 'Remove this booking?')) return;
+      try {
+        if (paidBooking) {
+          const { results } = await Store.refund([bk.id]);
+          if (results[bk.id] !== 'refunded') throw new Error(results[bk.id]);
+        } else {
+          await Store.cancel(b.dataset.id, { id: b.dataset.bid });
+        }
+      } catch { alert('Could not remove the booking. Please try again.'); }
       refresh();
     }));
 }
@@ -365,8 +398,34 @@ function renderSettings() {
     <div class="d2-type ${t.custom ? 'custom' : ''}">
       <div class="hd"><b>${esc(t.name)}</b><span class="d2-tag">${esc(t.level)}</span></div>
       <p>${esc(t.desc)}</p>
+      <label class="d2-label" style="display:flex;align-items:center;gap:8px;margin:10px 0 12px">Price £
+        <input class="d2-input tp-price" data-key="${k}" type="number" min="1" max="1000" step="0.01"
+          value="${t.price ? t.price / 100 : ''}" placeholder="Free" style="width:100px">
+      </label>
       ${t.custom ? `<button class="d2-btn danger sm tp-del" data-key="${k}">Delete</button>` : '<span class="core">Core class</span>'}
-    </div>`).join('');
+    </div>`).join('') + `
+    <div class="d2-form-row" style="grid-column:1 / -1;align-items:center;gap:14px">
+      <button class="d2-btn primary" id="savePrices">Save prices</button>
+      <span class="d2-saved" id="pricesSaved" hidden>Prices saved</span>
+    </div>
+    <p class="d2-sub" style="grid-column:1 / -1;margin:0">A price makes online bookings pay by card at the time of booking. Leave blank and the class stays free to reserve. Front desk and phone bookings are never charged online.</p>`;
+  $('savePrices').addEventListener('click', async () => {
+    const btn = $('savePrices'); btn.disabled = true;
+    try {
+      for (const inp of document.querySelectorAll('.tp-price')) {
+        const key = inp.dataset.key;
+        const pence = inp.value === '' ? null : Math.round(parseFloat(inp.value) * 100);
+        if (pence !== null && (!isFinite(pence) || pence < 100 || pence > 100000)) {
+          alert(`Enter a price between £1 and £1000 for ${CLASS_TYPES[key].name}, or leave it blank.`);
+          btn.disabled = false; return;
+        }
+        if ((CLASS_TYPES[key].price || null) !== pence) await Settings.setPrice(key, pence);
+      }
+      $('pricesSaved').hidden = false;
+      setTimeout(() => { $('pricesSaved').hidden = true; }, 2000);
+    } catch { alert('Could not save the prices. Please try again.'); }
+    btn.disabled = false;
+  });
   $('typeList').querySelectorAll('.tp-del').forEach(btn =>
     btn.addEventListener('click', async () => {
       if (!confirm('Delete this class type? Scheduled classes of this type will be removed from the timetable.')) return;
