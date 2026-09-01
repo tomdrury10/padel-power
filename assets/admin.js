@@ -269,16 +269,18 @@ function renderDetail() {
       : 'Cancel this class? It will come off the public timetable.';
     if (!confirm(msg)) return;
     try {
+      // cancel first so every member (including paid) gets the cancellation
+      // text while their booking is still active, then refund the paid ones
+      await Store.cancelClass(iso(c.date), c.time, { custom: c.custom });
+      if (c.custom) selectedClass = null;
       if (paidPeople.length) {
         const { results } = await Store.refund(paidPeople.map(p => p.id));
         const failed = paidPeople.filter(p => results[p.id] !== 'refunded');
         if (failed.length) {
-          alert('Could not refund: ' + failed.map(p => p.name).join(', ') + '. The class has NOT been cancelled. Please try again.');
-          refresh(); return;
+          alert('The class is cancelled and members have been notified, but these refunds FAILED and need doing in the Stripe dashboard: '
+            + failed.map(p => p.name).join(', '));
         }
       }
-      await Store.cancelClass(iso(c.date), c.time, { custom: c.custom });
-      if (c.custom) selectedClass = null;
     } catch { alert('Could not cancel the class. Please try again.'); }
     refresh();
   });

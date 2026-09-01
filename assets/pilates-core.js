@@ -250,24 +250,24 @@ const Store = {
     return { ok: true };
   },
 
-  // cancel a whole class occurrence and every booking on it
+  // cancel a whole class occurrence and every booking on it.
+  // The cancelled_classes insert comes FIRST: a database trigger texts every
+  // still-active booking the moment the marker lands, so the bookings must
+  // not be cancelled until after it.
   async cancelClass(dateIso, time, opts = {}) {
     const classId = `${dateIso}_${time}`;
+    await ppApi('cancelled_classes', {
+      method: 'POST',
+      headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify({ class_date: dateIso, start_time: time, reason: opts.reason || '' }),
+    });
+    (cache.cancelled[dateIso] = cache.cancelled[dateIso] || new Set()).add(time);
     await ppApi(`bookings?class_id=eq.${classId}&cancelled_at=is.null`, {
       method: 'PATCH',
       headers: { Prefer: 'return=minimal' },
       body: JSON.stringify({ cancelled_at: new Date().toISOString() }),
     });
-    if (opts.custom) {
-      await this.removeClass(dateIso, time);
-    } else {
-      await ppApi('cancelled_classes', {
-        method: 'POST',
-        headers: { Prefer: 'return=minimal' },
-        body: JSON.stringify({ class_date: dateIso, start_time: time, reason: opts.reason || '' }),
-      });
-      (cache.cancelled[dateIso] = cache.cancelled[dateIso] || new Set()).add(time);
-    }
+    if (opts.custom) await this.removeClass(dateIso, time);
     cache.counts[classId] = 0;
     cache.bookings = cache.bookings.filter(b => b.classId !== classId);
     return { ok: true };
