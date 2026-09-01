@@ -6,5 +6,6 @@ Disallow: /admin/
 Disallow: /login/
 Disallow: /book/
 Disallow: /cancel/
+Disallow: /pilates/
 
-Sitemap: https://tomdrury10.github.io/padel-power/sitemap.xml
+Sitemap: https://www.padelpower.uk/sitemap.xml
