@@ -78,6 +78,7 @@
     e.preventDefault();
     const f = e.target;
     const btn = f.querySelector('button[type=submit]');
+    if (f.evWebsite.value) { form.style.display = 'none'; small.style.display = 'none'; showDone(); return; }
     btn.disabled = true;
     const person = { name: f.evName.value, email: f.evEmail.value, phone: `${f.evCode.value} ${f.evPhone.value.trim().replace(/^0+/, '')}` };
     try {

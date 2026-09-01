@@ -95,6 +95,7 @@
             </select>
           </div>
           <div><label for="cmsg">Message</label><textarea id="cmsg" name="cmsg" placeholder="How can we help?" required></textarea></div>
+          <div style="position:absolute;left:-9999px;top:-9999px" aria-hidden="true"><label for="cwebsite">Website</label><input id="cwebsite" name="cwebsite" type="text" tabindex="-1" autocomplete="off"></div>
           <div class="cf-note" id="cformError" hidden></div>
           <div><button class="btn btn-blue" type="submit" id="cformBtn">Send message <span class="arr">→</span></button></div>
           <p class="cf-small">We use your details only to answer your enquiry. See our <a href="../privacy-policy/">privacy policy</a>.</p>
@@ -178,12 +179,12 @@
       <span>© 2026 Padel Power Ltd · Northampton</span>
       <span>Unit 1 Kingsfield Business Park, NN5 7PP</span>
       <span><a href="../privacy-policy/">Privacy Policy</a></span>
+      <span>Website built by <a href="https://getjuno.uk" target="_blank" rel="noopener">Juno</a></span>
       <span><a href="../login/">Admin Login</a></span>
     </div>
   </div>
 </footer>
 
-<a class="juno-badge" href="https://getjuno.uk" target="_blank" rel="noopener" aria-label="Website concept by Juno"><span class="dot"></span>Concept by <b>Juno</b></a>
 
 <div class="mobile-cta"><a class="btn btn-blue" href="https://playtomic.com/clubs/padelpower" target="_blank" rel="noopener">Book a court <span class="arr">→</span></a></div>
 
@@ -194,6 +195,7 @@ document.getElementById('contactForm').addEventListener('submit', async e => {
   e.preventDefault();
   const f = e.target, btn = document.getElementById('cformBtn'), err = document.getElementById('cformError');
   err.hidden = true;
+  if (f.cwebsite.value) { f.hidden = true; document.getElementById('contactDone').hidden = false; return; }
   btn.disabled = true;
   btn.textContent = 'Sending...';
   try {
