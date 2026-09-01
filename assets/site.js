@@ -1,3 +1,13 @@
+/* canonical domain: bounce any legacy host (GitHub Pages mirror, vercel.app)
+   onto www.padelpower.uk, preserving path and query so old SMS links work */
+(function () {
+  var h = location.hostname;
+  if (h === 'tomdrury10.github.io' || h === 'padel-power-demo.vercel.app') {
+    location.replace('https://www.padelpower.uk' +
+      location.pathname.replace(/^\/padel-power/, '') + location.search + location.hash);
+  }
+})();
+
 // nav scroll state
 const hd = document.querySelector('header');
 addEventListener('scroll', () => hd.classList.toggle('scrolled', scrollY > 40), { passive: true });

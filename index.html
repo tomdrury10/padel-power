@@ -26,31 +26,50 @@
 <link rel="stylesheet" href="assets/styles.css?v=29">
 <script type="application/ld+json">
 {
-  "@context": "https://schema.org",
-  "@type": "SportsActivityLocation",
-  "name": "Padel Power",
-  "description": "Premium indoor padel courts, coaching and leagues in Northampton.",
-  "url": "https://www.padelpower.uk/",
-  "logo": "https://www.padelpower.uk/assets/logo.png",
-  "image": "https://www.padelpower.uk/assets/pp-courts.jpg",
-  "telephone": "+44 7595 250776",
-  "email": "info@padelpower.uk",
-  "address": {
-    "@type": "PostalAddress",
-    "streetAddress": "Unit 1, Kingsfield Business Park, Gladstone Road",
-    "addressLocality": "Northampton",
-    "postalCode": "NN5 7PP",
-    "addressCountry": "GB"
+ "@type": "SportsActivityLocation",
+ "@id": "https://www.padelpower.uk/#club",
+ "name": "Padel Power",
+ "url": "https://www.padelpower.uk/",
+ "logo": "https://www.padelpower.uk/assets/logo.png",
+ "image": "https://www.padelpower.uk/assets/pp-courts.jpg",
+ "telephone": "+447595250776",
+ "address": {
+  "@type": "PostalAddress",
+  "streetAddress": "Unit 1 Kingsfield Business Park, Gladstone Road",
+  "addressLocality": "Northampton",
+  "postalCode": "NN5 7PP",
+  "addressCountry": "GB"
+ },
+ "sameAs": [
+  "https://www.instagram.com/padelpower.uk",
+  "https://www.tiktok.com/@padelpower.uk",
+  "https://www.facebook.com/padelpoweruk/"
+ ],
+ "openingHoursSpecification": [
+  {
+   "@type": "OpeningHoursSpecification",
+   "dayOfWeek": [
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday"
+   ],
+   "opens": "06:00",
+   "closes": "00:00"
   },
-  "openingHoursSpecification": [
-    { "@type": "OpeningHoursSpecification", "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday"], "opens": "06:00", "closes": "23:59" },
-    { "@type": "OpeningHoursSpecification", "dayOfWeek": ["Saturday","Sunday"], "opens": "06:00", "closes": "23:00" }
-  ],
-  "sameAs": [
-    "https://www.instagram.com/padelpower.uk",
-    "https://www.tiktok.com/@padelpower.uk",
-    "https://www.facebook.com/padelpoweruk/"
-  ]
+  {
+   "@type": "OpeningHoursSpecification",
+   "dayOfWeek": [
+    "Saturday",
+    "Sunday"
+   ],
+   "opens": "06:00",
+   "closes": "23:00"
+  }
+ ],
+ "@context": "https://schema.org",
+ "description": "Premium indoor padel courts, coaching and leagues in Northampton."
 }
 </script>
 </head>
@@ -221,7 +240,6 @@
       <div class="social-stat">
         <div class="nums">
           <div class="n"><div class="v">4.0K<span class="blue">+</span></div><div class="l">TikTok likes</div></div>
-          <div class="n"><div class="v">36</div><div class="l">Videos &amp; counting</div></div>
           <div class="n"><div class="v">5.0<span class="blue">★</span></div><div class="l">100+ Google reviews</div></div>
         </div>
         <div class="follow">
@@ -445,6 +463,6 @@
 
 <div class="mobile-cta"><a class="btn btn-blue" href="https://playtomic.com/clubs/padelpower" target="_blank" rel="noopener">Book a court <span class="arr">→</span></a></div>
 
-<script src="assets/site.js?v=3"></script>
+<script src="assets/site.js?v=4"></script>
 </body>
 </html>
