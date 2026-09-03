@@ -164,8 +164,8 @@ function classesFor(d, includeCancelled = false) {
   const extra = cache.custom[iso(d)] || [];
   const off = cache.cancelled[iso(d)] || new Set();
   const all = [
-    ...base.map(([time, type]) => ({ time, type, custom: false })),
-    ...extra.map(c => ({ time: c.time, type: c.type, custom: true })),
+    ...base.map(([time, type, instructor]) => ({ time, type, instructor: instructor || null, custom: false })),
+    ...extra.map(c => ({ time: c.time, type: c.type, instructor: c.instructor || null, custom: true })),
   ].sort((a, b) => a.time.localeCompare(b.time));
   const seen = new Set();
   return all
@@ -279,12 +279,12 @@ const Store = {
     return { ok: true };
   },
 
-  async addClass(dateIso, time, type) {
+  async addClass(dateIso, time, type, instructor) {
     const [row] = await ppApi('custom_classes', {
       method: 'POST',
-      body: JSON.stringify({ class_date: dateIso, start_time: time, type_key: type }),
+      body: JSON.stringify({ class_date: dateIso, start_time: time, type_key: type, instructor: instructor || null }),
     });
-    (cache.custom[dateIso] = cache.custom[dateIso] || []).push({ time, type, id: row.id });
+    (cache.custom[dateIso] = cache.custom[dateIso] || []).push({ time, type, instructor: instructor || null, id: row.id });
     cache.custom[dateIso].sort((a, b) => a.time.localeCompare(b.time));
     return { ok: true };
   },
@@ -366,7 +366,7 @@ async function ppInit() {
   if (Auth.session()) await Auth.ensure();   // keep staff signed in across reloads
   const [types, slots, custom, cancelled, settings, counts] = await Promise.all([
     ppApi('class_types?select=*'),
-    ppApi('timetable?select=weekday,start_time,type_key'),
+    ppApi('timetable?select=weekday,start_time,type_key,instructor'),
     ppApi(`custom_classes?class_date=gte.${today}&select=*`),
     ppApi(`cancelled_classes?class_date=gte.${today}&select=*`),
     ppApi('settings?id=eq.1&select=*'),
@@ -374,9 +374,9 @@ async function ppInit() {
   ]);
   cancelled.forEach(c => { (cache.cancelled[c.class_date] = cache.cancelled[c.class_date] || new Set()).add(c.start_time); });
   types.forEach(t => { CLASS_TYPES[t.key] = { name: t.name, level: t.level, desc: t.descr, custom: t.custom, price: t.price_pence || null }; });
-  slots.forEach(s => { (TIMETABLE[s.weekday] = TIMETABLE[s.weekday] || []).push([s.start_time, s.type_key]); });
+  slots.forEach(s => { (TIMETABLE[s.weekday] = TIMETABLE[s.weekday] || []).push([s.start_time, s.type_key, s.instructor]); });
   Object.values(TIMETABLE).forEach(day => day.sort((a, b) => a[0].localeCompare(b[0])));
-  custom.forEach(c => { (cache.custom[c.class_date] = cache.custom[c.class_date] || []).push({ time: c.start_time, type: c.type_key, id: c.id }); });
+  custom.forEach(c => { (cache.custom[c.class_date] = cache.custom[c.class_date] || []).push({ time: c.start_time, type: c.type_key, instructor: c.instructor || null, id: c.id }); });
   if (settings[0]) {
     const s = settings[0];
     Object.assign(RULES, {

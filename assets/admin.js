@@ -183,7 +183,7 @@ function renderSchedule() {
       const s = statusOf(c);
       return `<button class="d2-ev ${typeClass(c.type)} ${c.cancelled ? 'off' : ''} ${selectedClass === c.id ? 'sel' : ''}" style="top:${top + 1}px;height:${TG_H - 3}px" data-id="${c.id}">
         <span class="row"><span class="t">${c.time}</span><span class="c ${s.key}">${c.cancelled ? 'Cancelled' : c.count + '/' + RULES.maxRiders}</span></span>
-        <span class="n">${esc(shortName(c.t.name))}${c.custom ? ' +' : ''}</span>
+        <span class="n">${esc(c.instructor || shortName(c.t.name))}${c.custom ? ' +' : ''}</span>
       </button>`;
     }).join('');
     return `<div class="d2-tg-col ${iso(d) === todayIso ? 'today' : ''}" style="height:${colH}px">${blocks}</div>`;
@@ -216,7 +216,7 @@ function renderDetail() {
     <div class="d2-det-head">
       <div>
         <b>${esc(c.t.name)}</b>
-        <span>${fmtFull.format(c.date)} · ${c.time} · 1 hour</span>
+        <span>${fmtFull.format(c.date)} · ${c.time} · 1 hour${c.instructor ? ' · ' + esc(c.instructor) : ''}</span>
       </div>
       <span class="d2-tag st ${s.key}">${s.label}</span>
     </div>
@@ -527,7 +527,7 @@ function setBookingClass(classId) {
   drawerClass = classId;
   const c = findClass(classId);
   $('bkClass').textContent = c.t.name;
-  $('bkWhen').textContent = `${fmtFull.format(c.date)} · ${c.time} · 1 hour`;
+  $('bkWhen').textContent = `${fmtFull.format(c.date)} · ${c.time} · 1 hour${c.instructor ? ' · ' + c.instructor : ''}`;
   $('bkBeds').innerHTML = Array.from({ length: RULES.maxRiders }, (_, i) => `<i class="${i < c.count ? 'taken' : ''}"></i>`).join('');
   $('bkSpots').textContent = `${RULES.maxRiders - c.count} of ${RULES.maxRiders} beds free`;
 }
@@ -580,7 +580,7 @@ $('clForm').addEventListener('submit', async e => {
     alert('There is already a class at ' + f.clTime.value + ' that day.');
     return;
   }
-  try { await Store.addClass(f.clDate.value, f.clTime.value, f.clType.value); } catch { alert('Could not add the class. Please try again.'); return; }
+  try { await Store.addClass(f.clDate.value, f.clTime.value, f.clType.value, f.clInstructor.value.trim()); } catch { alert('Could not add the class. Please try again.'); return; }
   closeDrawers();
   render();
 });

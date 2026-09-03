@@ -6,8 +6,8 @@
 
 const dateStrip = document.getElementById('dateStrip');
 const classList = document.getElementById('classList');
-const dates = bookableDates();
-let activeDate = dates[0];
+let dates = [];        // filled once ppReady has loaded the real opening date
+let activeDate = null;
 
 function renderDates() {
   dateStrip.innerHTML = dates.map((d, i) => `
@@ -26,7 +26,7 @@ function renderClasses() {
     classList.innerHTML = '<p class="pempty">No classes scheduled this day.</p>';
     return;
   }
-  classList.innerHTML = day.map(({ time, type: typeKey }) => {
+  classList.innerHTML = day.map(({ time, type: typeKey, instructor }) => {
     const t = CLASS_TYPES[typeKey];
     const id = `${iso(activeDate)}_${time}`;
     const spots = RULES.maxRiders - Store.count(id);
@@ -42,7 +42,7 @@ function renderClasses() {
       <div class="pc-time"><b>${time}</b><span>1 hour</span></div>
       <div class="pc-info">
         <div class="pc-name">${t.name} <span class="pc-level">${t.level}</span></div>
-        <div class="pc-desc">${t.desc}</div>
+        <div class="pc-desc">${instructor ? `With ${instructor} · ` : ''}${t.desc}</div>
       </div>
       <div class="pc-right">
         <div class="pc-spots ${spots > 0 && spots <= 2 ? 'low' : ''}">${spots > 0 ? `${spots} of ${RULES.maxRiders} beds left` : 'Fully booked'}</div>
@@ -53,6 +53,8 @@ function renderClasses() {
 }
 
 ppReady.then(() => {
+  dates = bookableDates();
+  activeDate = dates[0];
   renderDates();
   renderClasses();
 }).catch(() => {

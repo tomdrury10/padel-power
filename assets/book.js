@@ -40,8 +40,12 @@
     '1 hour',
     t.level,
     `${RULES.maxRiders} beds`,
-  ].map(x => `<span>${x}</span>`).join('');
-  document.getElementById('evDesc').textContent = t.desc + ' Led by our reformer instructors in the brand-new studio, with never more than eight people in the room.';
+    slot.instructor ? `With ${esc(slot.instructor)}` : null,
+  ].filter(Boolean).map(x => `<span>${x}</span>`).join('');
+  document.getElementById('evDesc').textContent = t.desc
+    + (slot.instructor
+      ? ` Led by ${slot.instructor} in the brand-new studio, with never more than eight people in the room.`
+      : ' Led by our reformer instructors in the brand-new studio, with never more than eight people in the room.');
 
   // bed dots
   document.getElementById('evBeds').innerHTML = Array.from({ length: RULES.maxRiders },
