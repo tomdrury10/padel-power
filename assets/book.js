@@ -40,8 +40,11 @@
     '1 hour',
     t.level,
     `${RULES.maxRiders} beds`,
-    slot.instructor ? `With ${esc(slot.instructor)}` : null,
-  ].filter(Boolean).map(x => `<span>${x}</span>`).join('');
+  ].map(x => `<span>${x}</span>`).join('');
+  if (slot.instructor) {
+    document.getElementById('evInstructor').innerHTML = `${esc(slot.instructor)}<br><em>Reformer instructor</em>`;
+    document.getElementById('evInstructorFact').style.display = '';
+  }
   document.getElementById('evDesc').textContent = t.desc
     + (slot.instructor
       ? ` Led by ${slot.instructor} in the brand-new studio, with never more than eight people in the room.`
