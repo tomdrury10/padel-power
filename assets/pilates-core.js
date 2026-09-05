@@ -296,6 +296,15 @@ const Store = {
     return { ok: true };
   },
 
+  // one-off health waiver, keyed by email (the server enforces it on booking)
+  async saveWaiver(w) {
+    await ppApi('waivers', {
+      method: 'POST',
+      headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify(w),
+    });
+  },
+
   // staff dashboard: load every active booking (names + contacts)
   async loadBookings() {
     const rows = await ppApi('bookings?cancelled_at=is.null&order=created_at.asc&select=*');
@@ -322,6 +331,17 @@ function mapBooking(r) {
 }
 
 const gbp = pence => '£' + (pence % 100 === 0 ? pence / 100 : (pence / 100).toFixed(2));
+
+/* ---------- health questionnaire and waiver ---------- */
+const PP_WAIVER_QUESTIONS = [
+  'Do you currently have any injuries, pain, or physical conditions that may affect your ability to take part in Pilates?',
+  'Do you have any medical conditions that the instructor should be aware of?',
+  'Have you had any recent surgery, treatment, or significant injury?',
+  'Are you currently receiving treatment from a doctor, physiotherapist, chiropractor, or other healthcare professional for a condition that may affect exercise?',
+  'Do you experience dizziness, fainting, chest pain, shortness of breath, or any other symptoms during physical activity?',
+  'Are you currently pregnant or have you given birth recently?',
+  'Is there anything else regarding your health, mobility, or wellbeing that your Pilates instructor should know before the session?',
+];
 
 /* ---------- staff settings ---------- */
 const Settings = {

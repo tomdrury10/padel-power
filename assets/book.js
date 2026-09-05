@@ -102,7 +102,9 @@
       btn.disabled = false;
       if (price) btn.innerHTML = `Book and pay ${gbp(price)} <span class="arr">→</span>`;
       const msg = String(err.message);
-      if (msg.includes('class_full')) {
+      if (msg.includes('waiver_required')) {
+        openWaiver(person, () => form.requestSubmit());
+      } else if (msg.includes('class_full')) {
         alert('Sorry, that class has just filled up. Pick another session on the timetable.');
         location.href = '../pilates/#book';
       } else if (msg.includes('payment_required')) {
@@ -154,6 +156,89 @@
     form.style.display = 'none';
     small.textContent = msg;
     document.getElementById('evBeds').classList.add('dim');
+  }
+
+  /* ---- health questionnaire and waiver (first booking per email) ---- */
+  const wvOverlay = document.getElementById('wvOverlay');
+  let wvRetry = null;
+  let wvBuilt = false;
+
+  function buildWaiver() {
+    if (wvBuilt) return;
+    wvBuilt = true;
+    document.getElementById('wvQuestions').innerHTML = PP_WAIVER_QUESTIONS.map((q, i) => `
+      <div class="wv-q">
+        <p><span class="n">${i + 1}.</span>${esc(q)}</p>
+        <div class="wv-yn">
+          <label><input type="radio" name="q${i}" value="no" required> No</label>
+          <label><input type="radio" name="q${i}" value="yes"> Yes</label>
+        </div>
+        <textarea name="c${i}" placeholder="If yes, please give details" maxlength="500" hidden></textarea>
+      </div>`).join('');
+    document.querySelectorAll('#wvQuestions input[type=radio]').forEach(r =>
+      r.addEventListener('change', () => {
+        const ta = document.querySelector(`#wvQuestions textarea[name=c${r.name.slice(1)}]`);
+        const yes = r.form.elements['q' + r.name.slice(1)].value === 'yes';
+        ta.hidden = !yes;
+        ta.required = yes;
+        if (!yes) ta.value = '';
+      }));
+    document.getElementById('wvCancel').addEventListener('click', closeWaiver);
+    document.getElementById('wvForm').addEventListener('submit', submitWaiver);
+  }
+
+  function openWaiver(person, retry) {
+    buildWaiver();
+    wvRetry = retry;
+    wvPerson = person;
+    document.getElementById('wvDate').textContent =
+      new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date());
+    const nameEl = document.getElementById('wvName');
+    if (!nameEl.value) nameEl.value = person.name || '';
+    wvOverlay.hidden = false;
+    document.body.style.overflow = 'hidden';
+    wvOverlay.scrollTop = 0;
+  }
+  let wvPerson = null;
+
+  function closeWaiver() {
+    wvOverlay.hidden = true;
+    document.body.style.overflow = '';
+  }
+
+  async function submitWaiver(e) {
+    e.preventDefault();
+    const wf = e.target;
+    const btn = document.getElementById('wvSubmit');
+    btn.disabled = true;
+    const answers = PP_WAIVER_QUESTIONS.map((q, i) => ({
+      n: i + 1,
+      yes: wf.elements['q' + i].value === 'yes',
+      comment: wf.elements['c' + i].value.trim(),
+    }));
+    try {
+      await Store.saveWaiver({
+        email: (wvPerson.email || '').trim().toLowerCase(),
+        full_name: wf.wvName.value.trim(),
+        emergency_contact: wf.wvEmergency.value.trim(),
+        answers,
+        declaration: true,
+        signature: wf.wvSign.value.trim(),
+      });
+    } catch (err) {
+      const m = String(err.message);
+      if (!/duplicate|waivers_email/i.test(m)) {
+        btn.disabled = false;
+        alert(m.includes('rate_limited')
+          ? 'Too many submissions just now. Please wait a few minutes and try again.'
+          : 'Could not save the questionnaire. Please check your answers and try again.');
+        return;
+      }
+      // a waiver already exists for this email: that is fine, carry on
+    }
+    btn.disabled = false;
+    closeWaiver();
+    if (wvRetry) wvRetry();
   }
 
   /* ---- helpers ---- */

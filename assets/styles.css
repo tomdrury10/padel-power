@@ -1546,3 +1546,29 @@ nav.links a{white-space:nowrap}
   nav.links{gap:24px;font-size:12.5px}
   .nav-cta .btn-ghost{display:none}
 }
+
+/* ---------- health waiver modal ---------- */
+.wv-overlay{position:fixed;inset:0;z-index:300;background:rgba(5,6,9,.82);backdrop-filter:blur(5px);overflow-y:auto;padding:26px 14px;display:flex}
+.wv-panel{background:var(--ink);border:1px solid var(--line-soft);border-radius:22px;max-width:660px;width:100%;margin:auto;padding:clamp(26px,4vw,44px)}
+.wv-panel h2{font-variation-settings:'wdth' 116;font-style:italic;font-weight:850;text-transform:uppercase;font-size:clamp(24px,3vw,32px);margin-bottom:10px}
+.wv-sub{color:var(--paper-dim);font-size:14.5px;margin-bottom:22px;line-height:1.6}
+.wv-q{border-top:1px solid var(--line-soft);padding:16px 0 6px}
+.wv-q>p{font-size:14.5px;color:var(--paper);margin-bottom:12px;line-height:1.55}
+.wv-q .n{color:var(--blue);font-family:var(--mono);font-size:12px;margin-right:8px}
+.wv-yn{display:flex;gap:22px;margin-bottom:12px}
+.wv-yn label{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--paper-dim);cursor:pointer;font-family:var(--display);text-transform:none;letter-spacing:0;margin:0}
+.wv-yn input{width:auto;accent-color:var(--blue)}
+.wv-q textarea{min-height:70px;margin-bottom:12px}
+.wv-decl{border-top:1px solid var(--line-soft);margin-top:10px;padding-top:18px}
+.wv-decl h3{font-variation-settings:'wdth' 112;font-style:italic;font-weight:820;text-transform:uppercase;font-size:16px;margin-bottom:10px}
+.wv-decl p{color:var(--paper-dim);font-size:13.5px;line-height:1.65;margin-bottom:10px}
+.wv-check{display:flex!important;align-items:flex-start;gap:10px;font-family:var(--display)!important;text-transform:none!important;letter-spacing:0!important;font-size:14px!important;color:var(--paper)!important;cursor:pointer;margin:14px 0 6px!important}
+.wv-check input{width:auto;margin-top:3px;accent-color:var(--blue)}
+.wv-actions{display:flex;gap:12px;justify-content:flex-end;margin-top:8px}
+@media(max-width:560px){.wv-actions{flex-direction:column-reverse}.wv-actions .btn{width:100%;justify-content:center}}
+/* waiver view in the admin drawer */
+.d2-wv b{display:block;font-size:15px}
+.d2-wv .row{padding:10px 0;border-bottom:1px solid var(--line2,#e4e1da)}
+.d2-wv .q{font-size:13px;color:var(--txt-dim,#6b6b66);margin-bottom:4px}
+.d2-wv .a{font-size:13.5px}
+.d2-wv .yes{color:#b8860b;font-weight:700}

@@ -22,7 +22,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="icon" type="image/png" href="../assets/favicon.png">
 <link rel="apple-touch-icon" href="../assets/favicon.png">
-<link rel="stylesheet" href="../assets/styles.css?v=29">
+<link rel="stylesheet" href="../assets/styles.css?v=30">
 </head>
 <body>
 
@@ -157,6 +157,30 @@
   </div>
 </section>
 
+<div class="wv-overlay" id="wvOverlay" hidden>
+  <div class="wv-panel" role="dialog" aria-modal="true" aria-labelledby="wvTitle">
+    <h2 id="wvTitle">Health questionnaire <span class="blue">and waiver</span></h2>
+    <p class="wv-sub">Your first booking with the studio comes with a short health questionnaire. It takes two minutes and we only ask once. Date: <b id="wvDate"></b></p>
+    <form class="cform" id="wvForm">
+      <div><label for="wvName">Full name</label><input id="wvName" name="wvName" type="text" required maxlength="80"></div>
+      <div><label for="wvEmergency">Emergency contact name and number</label><input id="wvEmergency" name="wvEmergency" type="text" required maxlength="120" placeholder="e.g. Sam Smith, 07123 456789"></div>
+      <div id="wvQuestions"></div>
+      <div class="wv-decl">
+        <h3>Participant declaration</h3>
+        <p>I confirm that the information I have provided above is accurate to the best of my knowledge. I understand that Pilates involves physical exercise and that I am responsible for working within my own abilities and following the instructor's guidance.</p>
+        <p>I agree to inform the instructor of any relevant changes to my health, injuries, pregnancy, or medical circumstances before participating in future sessions.</p>
+        <p>If I am unsure whether Pilates is suitable for me due to a medical condition, injury, pregnancy, or other health concern, I understand that I should seek appropriate advice from a healthcare professional before participating.</p>
+        <label class="wv-check"><input type="checkbox" id="wvAgree" required> I have read and agree to the declaration above</label>
+      </div>
+      <div><label for="wvSign">Signature (type your full name)</label><input id="wvSign" name="wvSign" type="text" required maxlength="80" autocomplete="off"></div>
+      <div class="wv-actions">
+        <button type="button" class="btn btn-ghost" id="wvCancel">Back</button>
+        <button type="submit" class="btn btn-blue" id="wvSubmit">Sign and continue <span class="arr">→</span></button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <footer>
   <div class="foot-giant" aria-hidden="true">Padel Power</div>
   <div class="wrap">
@@ -210,8 +234,8 @@
 <div class="mobile-cta"><a class="btn btn-blue" href="#evCard">Reserve your bed <span class="arr">→</span></a></div>
 
 <script src="../assets/site.js?v=4"></script>
-<script src="../assets/pilates-core.js?v=16"></script>
+<script src="../assets/pilates-core.js?v=17"></script>
 <script>if(!Auth.session())location.replace('../login/?next='+encodeURIComponent(location.pathname+location.search));</script>
-<script src="../assets/book.js?v=15"></script>
+<script src="../assets/book.js?v=16"></script>
 </body>
 </html>

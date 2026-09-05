@@ -226,7 +226,7 @@ function renderDetail() {
       ${c.cancelled ? '<p class="d2-empty">This class is cancelled. It no longer appears on the public timetable.</p>' : ''}
       ${people.length ? people.map(p => `
         <div class="d2-att">
-          <div><b>${esc(p.name)}</b><span>${esc(p.phone || '')}${p.email ? ' · ' + esc(p.email) : ''}${p.paid ? ' · Paid ' + gbp(p.amount) : ''}</span></div>
+          <div><b>${esc(p.name)}</b><span>${esc(p.phone || '')}${p.email ? ' · ' + esc(p.email) : ''}${p.paid ? ' · Paid ' + gbp(p.amount) : ''}${waiverMark(p.email)}</span></div>
           <span class="d2-tag ${p.source === 'Online' ? 'online' : ''}">${esc(p.source)}</span>
           <button class="d2-x" data-bid="${p.id}" title="Remove booking"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
         </div>`).join('') : '<p class="d2-empty">No bookings yet.</p>'}
@@ -237,6 +237,8 @@ function renderDetail() {
         ? `<button class="d2-btn ghost" id="detRestore">Put class back on</button>`
         : `<button class="d2-btn danger" id="detCancelClass">Cancel class</button>`}
     </div>`;
+  el.querySelectorAll('.wv-view').forEach(b =>
+    b.addEventListener('click', () => openWaiverView(b.dataset.em)));
   el.querySelectorAll('.d2-x').forEach(b =>
     b.addEventListener('click', async () => {
       const p = people.find(x => x.id === b.dataset.bid);
@@ -313,7 +315,7 @@ function renderBookings() {
   $('bkTable').querySelector('tbody').innerHTML = rows.map(b => `
     <tr>
       <td class="nm">${esc(b.name)}</td>
-      <td class="ct">${esc(b.phone || '')}${b.email ? '<br>' + esc(b.email) : ''}</td>
+      <td class="ct">${esc(b.phone || '')}${b.email ? '<br>' + esc(b.email) : ''}${waiverMark(b.email)}</td>
       <td>${esc(b.cls.t.name)}</td>
       <td class="ct">${fmtDay.format(b.cls.date)} ${fmtDate.format(b.cls.date)} · ${b.cls.time}</td>
       <td><span class="d2-tag ${(b.source || 'Online') === 'Online' ? 'online' : ''}">${esc(b.source || 'Online')}</span>${b.paid ? `<br><span class="d2-tag" style="margin-top:5px">Paid ${gbp(b.amount)}</span>` : ''}</td>
@@ -321,6 +323,8 @@ function renderBookings() {
     </tr>`).join('');
   $('bkEmpty').hidden = rows.length > 0;
   $('bkTable').querySelector('thead').style.display = rows.length ? '' : 'none';
+  $('bkTable').querySelectorAll('.wv-view').forEach(b =>
+    b.addEventListener('click', () => openWaiverView(b.dataset.em)));
   $('bkTable').querySelectorAll('.d2-x').forEach(b =>
     b.addEventListener('click', async () => {
       const bk = rows.find(x => x.id === b.dataset.bid);
@@ -346,6 +350,41 @@ $('srcFilter').querySelectorAll('button').forEach(b =>
     $('srcFilter').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
     renderBookings();
   }));
+
+/* ============================================================
+   HEALTH WAIVERS (one per member email, signed at first booking)
+   ============================================================ */
+let waiverEmails = new Set();
+async function loadWaivers() {
+  const rows = await ppApi('waivers?select=email');
+  waiverEmails = new Set(rows.map(r => r.email));
+}
+function waiverMark(email) {
+  if (!email) return '';
+  const em = email.trim().toLowerCase();
+  return waiverEmails.has(em)
+    ? ` · <button class="d2-link wv-view" data-em="${esc(em)}">Waiver ✓</button>`
+    : ' · No waiver';
+}
+async function openWaiverView(email) {
+  let w;
+  try {
+    const rows = await ppApi(`waivers?email=eq.${encodeURIComponent(email)}&select=*`);
+    w = rows[0];
+  } catch {}
+  if (!w) { alert('Could not load the waiver.'); return; }
+  const fmtD = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  $('wvBody').innerHTML = `
+    <div class="row"><b>${esc(w.full_name)}</b><span class="q">${esc(w.email)} · signed ${fmtD.format(new Date(w.signed_at))}</span></div>
+    <div class="row"><div class="q">Emergency contact</div><div class="a">${esc(w.emergency_contact)}</div></div>
+    ${(w.answers || []).map(a => `
+      <div class="row">
+        <div class="q">${a.n}. ${esc(PP_WAIVER_QUESTIONS[a.n - 1] || '')}</div>
+        <div class="a">${a.yes ? '<span class="yes">Yes</span>' : 'No'}${a.yes && a.comment ? ' · ' + esc(a.comment) : ''}</div>
+      </div>`).join('')}
+    <div class="row"><div class="q">Declaration agreed · signature</div><div class="a">${esc(w.signature)}</div></div>`;
+  openDrawer('wvDrawer');
+}
 
 /* ============================================================
    ENQUIRIES (contact form submissions)
@@ -498,6 +537,7 @@ function closeDrawers() {
 $('scrim').addEventListener('click', closeDrawers);
 $('bkClose').addEventListener('click', closeDrawers);
 $('clClose').addEventListener('click', closeDrawers);
+$('wvClose').addEventListener('click', closeDrawers);
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawers(); });
 
 /* --- new booking drawer --- */
@@ -606,12 +646,13 @@ ppReady
   .then(async () => {
     if (!await Auth.ensure()) { location.replace('../login/'); throw new Error('signed_out'); }
     await Store.loadBookings();
+    await loadWaivers();
     return loadEnquiries();
   })
   .then(() => {
     goto(TITLES[startPage] ? startPage : 'overview');
     setInterval(async () => {
-      try { await Store.loadBookings(); await loadEnquiries(); render(); } catch {}
+      try { await Store.loadBookings(); await loadWaivers(); await loadEnquiries(); render(); } catch {}
     }, 60000);
   })
   .catch(err => {
