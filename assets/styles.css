@@ -74,6 +74,7 @@ img{display:block;max-width:100%}
 .btn-blue{background:var(--blue);color:var(--ink)}
 .btn-blue:hover{background:#4cb8f2;box-shadow:0 8px 40px rgba(43,166,232,.35)}
 .btn-ghost{border-color:rgba(242,240,235,.3);color:var(--paper)}
+button.btn-ghost{background:transparent}
 .btn-ghost:hover{border-color:var(--paper);background:rgba(242,240,235,.06)}
 
 /* ---------- nav ---------- */
