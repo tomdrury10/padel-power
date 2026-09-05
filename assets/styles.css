@@ -1574,3 +1574,15 @@ nav.links a{white-space:nowrap}
 .d2-wv .q{font-size:13px;color:var(--txt-dim,#6b6b66);margin-bottom:4px}
 .d2-wv .a{font-size:13.5px}
 .d2-wv .yes{color:#b8860b;font-weight:700}
+
+/* staff waiver signing (light drawer) */
+.d2-wq{border-top:1px solid #e6e3dc;padding:12px 0 4px}
+.d2-wq>p{font-size:13px;color:#1c1c1a;line-height:1.5;margin-bottom:8px}
+.d2-wq .yn{display:flex;gap:18px;margin-bottom:8px}
+.d2-wq .yn label{display:flex;align-items:center;gap:6px;font-size:13px;color:#1c1c1a;cursor:pointer}
+.d2-wq .yn input{accent-color:#1d7fb8}
+.d2-wq textarea.d2-input{min-height:56px;margin-bottom:8px;resize:vertical}
+.d2-wdecl{border-top:1px solid #e6e3dc;margin-top:8px;padding-top:12px}
+.d2-wdecl p{font-size:12px;color:#6b6b66;line-height:1.6;margin-bottom:8px}
+.d2-wcheck{display:flex;gap:8px;align-items:flex-start;font-size:13px;color:#1c1c1a;margin:10px 0 14px;cursor:pointer}
+.d2-wcheck input{margin-top:2px;accent-color:#1d7fb8}

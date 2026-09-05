@@ -577,15 +577,23 @@ $('globalNew').addEventListener('click', () => openBooking(null));
 $('bkForm').addEventListener('submit', async e => {
   e.preventDefault();
   const f = e.target;
+  const person = {
+    name: f.bkName.value.trim(),
+    email: f.bkEmail.value.trim().toLowerCase(),
+    phone: `${f.bkCode.value} ${f.bkPhone.value.trim().replace(/^0+/, '')}`,
+    source: f.bkSrc.value,
+  };
+  if (!waiverEmails.has(person.email)) { openStaffWaiver(person); return; }
+  await doStaffBook(person);
+});
+
+async function doStaffBook(person) {
   try {
-    await Store.book(drawerClass, {
-      name: f.bkName.value.trim(),
-      email: '',
-      phone: `${f.bkCode.value} ${f.bkPhone.value.trim().replace(/^0+/, '')}`,
-      source: f.bkSrc.value,
-    });
+    await Store.book(drawerClass, person);
   } catch (err) {
-    alert(String(err.message).includes('class_full') ? 'That class is now full.' : 'Could not save the booking. Please try again.');
+    const msg = String(err.message);
+    if (msg.includes('waiver_required')) { openStaffWaiver(person); return; }
+    alert(msg.includes('class_full') ? 'That class is now full.' : 'Could not save the booking. Please try again.');
     setBookingClass(drawerClass);
     return;
   }
@@ -593,6 +601,76 @@ $('bkForm').addEventListener('submit', async e => {
   $('bkForm').hidden = true;
   $('bkDone').hidden = false;
   render();
+}
+
+/* --- waiver signing drawer: member completes it on the staff device --- */
+let wsPending = null;
+let wsBuilt = false;
+function buildStaffWaiver() {
+  if (wsBuilt) return;
+  wsBuilt = true;
+  $('wsQuestions').innerHTML = PP_WAIVER_QUESTIONS.map((q, i) => `
+    <div class="d2-wq">
+      <p>${i + 1}. ${esc(q)}</p>
+      <div class="yn">
+        <label><input type="radio" name="wsq${i}" value="no" required> No</label>
+        <label><input type="radio" name="wsq${i}" value="yes"> Yes</label>
+      </div>
+      <textarea class="d2-input" name="wsc${i}" placeholder="If yes, please give details" maxlength="500" hidden></textarea>
+    </div>`).join('');
+  document.querySelectorAll('#wsQuestions input[type=radio]').forEach(r =>
+    r.addEventListener('change', () => {
+      const i = r.name.slice(3);
+      const ta = document.querySelector(`#wsQuestions textarea[name=wsc${i}]`);
+      const yes = r.form.elements['wsq' + i].value === 'yes';
+      ta.hidden = !yes;
+      ta.required = yes;
+      if (!yes) ta.value = '';
+    }));
+}
+function openStaffWaiver(person) {
+  buildStaffWaiver();
+  wsPending = person;
+  $('wsEmail').textContent = person.email;
+  $('wsDate').textContent = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date());
+  $('wsForm').reset();
+  document.querySelectorAll('#wsQuestions textarea').forEach(t => { t.hidden = true; t.required = false; });
+  $('wsName').value = person.name;
+  $('wsDrawer').classList.add('open');
+}
+$('wsClose').addEventListener('click', () => { $('wsDrawer').classList.remove('open'); wsPending = null; });
+$('wsForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const wf = e.target;
+  const btn = wf.querySelector('button[type=submit]');
+  btn.disabled = true;
+  const answers = PP_WAIVER_QUESTIONS.map((q, i) => ({
+    n: i + 1,
+    yes: wf.elements['wsq' + i].value === 'yes',
+    comment: wf.elements['wsc' + i].value.trim(),
+  }));
+  try {
+    await Store.saveWaiver({
+      email: wsPending.email,
+      full_name: $('wsName').value.trim(),
+      emergency_contact: $('wsEmergency').value.trim(),
+      answers,
+      declaration: true,
+      signature: $('wsSign').value.trim(),
+    });
+  } catch (err) {
+    if (!/duplicate|waivers_email/i.test(String(err.message))) {
+      btn.disabled = false;
+      alert('Could not save the waiver. Please check the answers and try again.');
+      return;
+    }
+  }
+  btn.disabled = false;
+  waiverEmails.add(wsPending.email);
+  $('wsDrawer').classList.remove('open');
+  const person = wsPending;
+  wsPending = null;
+  await doStaffBook(person);
 });
 $('bkAnother').addEventListener('click', () => {
   const id = drawerClass;

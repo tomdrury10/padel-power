@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="icon" type="image/png" href="../assets/favicon.png">
-<link rel="stylesheet" href="../assets/styles.css?v=32">
+<link rel="stylesheet" href="../assets/styles.css?v=33">
 </head>
 <body class="d2">
 
@@ -228,6 +228,8 @@
     <form id="bkForm">
       <label class="d2-label" for="bkName">Name</label>
       <input class="d2-input" id="bkName" name="bkName" type="text" placeholder="Member name" required>
+      <label class="d2-label" for="bkEmail">Email</label>
+      <input class="d2-input" id="bkEmail" name="bkEmail" type="email" placeholder="member@email.com" required>
       <label class="d2-label" for="bkPhone">Mobile</label>
       <div class="d2-phone">
         <select name="bkCode" class="d2-input" aria-label="Country code" required>
@@ -287,10 +289,35 @@
   </div>
   <div class="d2-dr-body d2-wv" id="wvBody"></div>
 </aside>
+<!-- ===== WAIVER SIGNING DRAWER (staff bookings) ===== -->
+<aside class="d2-drawer" id="wsDrawer" role="dialog" aria-modal="true">
+  <div class="d2-dr-head"><span>Health waiver</span>
+    <button class="d2-icon" id="wsClose" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
+  </div>
+  <div class="d2-dr-body">
+    <p class="d2-sub">No waiver on file for <b id="wsEmail"></b>. Hand the device to the member to complete and sign before the booking is made. Date: <b id="wsDate"></b></p>
+    <form id="wsForm">
+      <label class="d2-label" for="wsName">Full name</label>
+      <input class="d2-input" id="wsName" type="text" required maxlength="80">
+      <label class="d2-label" for="wsEmergency">Emergency contact name and number</label>
+      <input class="d2-input" id="wsEmergency" type="text" required maxlength="120" placeholder="e.g. Sam Smith, 07123 456789">
+      <div id="wsQuestions"></div>
+      <div class="d2-wdecl">
+        <p>I confirm that the information I have provided above is accurate to the best of my knowledge. I understand that Pilates involves physical exercise and that I am responsible for working within my own abilities and following the instructor's guidance.</p>
+        <p>I agree to inform the instructor of any relevant changes to my health, injuries, pregnancy, or medical circumstances before participating in future sessions.</p>
+        <p>If I am unsure whether Pilates is suitable for me due to a medical condition, injury, pregnancy, or other health concern, I understand that I should seek appropriate advice from a healthcare professional before participating.</p>
+        <label class="d2-wcheck"><input type="checkbox" id="wsAgree" required> I have read and agree to the declaration above</label>
+      </div>
+      <label class="d2-label" for="wsSign">Signature (member types their full name)</label>
+      <input class="d2-input" id="wsSign" type="text" required maxlength="80" autocomplete="off">
+      <button class="d2-btn primary block" type="submit">Sign and continue</button>
+    </form>
+  </div>
+</aside>
 </div>
 
 
 <script src="../assets/pilates-core.js?v=17"></script>
-<script src="../assets/admin.js?v=19"></script>
+<script src="../assets/admin.js?v=20"></script>
 </body>
 </html>
