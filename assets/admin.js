@@ -74,7 +74,12 @@ function render() {
   if (page === 'schedule') renderSchedule();
   if (page === 'bookings') renderBookings();
   if (page === 'enquiries') renderEnquiries();
-  if (page === 'settings') renderSettings();
+  if (page === 'settings') {
+    // don't wipe half-typed edits when the 60s poll re-renders
+    const a = document.activeElement;
+    if (a && $('pgSettings').contains(a) && ['INPUT', 'TEXTAREA', 'SELECT'].includes(a.tagName)) return;
+    renderSettings();
+  }
 }
 function refresh() { render(); }
 
@@ -479,6 +484,68 @@ function renderSettings() {
   f.rCutoff.value = RULES.cutoffHours;
   f.rWindow.value = RULES.windowDays;
   $('pwEmail').textContent = Auth.email() || '';
+  renderTimetableEditor();
+}
+
+/* --- weekly timetable editor --- */
+const TT_DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const TT_ORDER = [1, 2, 3, 4, 5, 6, 0];
+function renderTimetableEditor() {
+  $('ttEditor').innerHTML = TT_ORDER.map(wd => `
+    <div class="day">
+      <h3>${TT_DAYS[wd]}</h3>
+      ${(TIMETABLE[wd] || []).map(([time, type, instr, id]) => `
+        <div class="slot" data-id="${id}" data-wd="${wd}" data-orig="${time}">
+          <input class="d2-input tt-time" type="time" value="${time}" required>
+          <input class="d2-input tt-instr" type="text" value="${esc(instr || '')}" placeholder="Instructor" maxlength="40">
+          <div class="row">
+            <button class="d2-btn ghost sm tt-save" type="button">Save</button>
+            <button class="d2-btn danger sm tt-del" type="button">Remove</button>
+          </div>
+        </div>`).join('')}
+      <div class="slot add" data-wd="${wd}">
+        <input class="d2-input tt-ntime" type="time">
+        <input class="d2-input tt-ninstr" type="text" placeholder="Instructor" maxlength="40">
+        <div class="row"><button class="d2-btn primary sm tt-add" type="button">+ Add class</button></div>
+      </div>
+    </div>`).join('');
+
+  $('ttEditor').querySelectorAll('.tt-add').forEach(b => b.addEventListener('click', async () => {
+    const box = b.closest('.slot'), wd = +box.dataset.wd;
+    const time = box.querySelector('.tt-ntime').value;
+    const instr = box.querySelector('.tt-ninstr').value.trim();
+    if (!time) { alert('Pick a start time.'); return; }
+    if ((TIMETABLE[wd] || []).some(s => s[0] === time)) {
+      alert(`There is already a class at ${time} on ${TT_DAYS[wd]}.`); return;
+    }
+    try { await Settings.addTimetableSlot(wd, time, Object.keys(CLASS_TYPES)[0], instr); }
+    catch { alert('Could not add the class. Please try again.'); }
+    renderTimetableEditor();
+  }));
+
+  $('ttEditor').querySelectorAll('.tt-save').forEach(b => b.addEventListener('click', async () => {
+    const box = b.closest('.slot'), wd = +box.dataset.wd, id = +box.dataset.id;
+    const time = box.querySelector('.tt-time').value;
+    const instr = box.querySelector('.tt-instr').value.trim();
+    if (!time) { alert('Pick a start time.'); return; }
+    if (time !== box.dataset.orig) {
+      if ((TIMETABLE[wd] || []).some(s => s[0] === time && s[3] !== id)) {
+        alert(`There is already a class at ${time} on ${TT_DAYS[wd]}.`); return;
+      }
+      if (!confirm(`Move the ${TT_DAYS[wd]} ${box.dataset.orig} class to ${time} every week?\n\nBookings already made for upcoming dates stay at the old time and are NOT moved or notified. Cancel those classes from the Schedule first if anyone is booked.`)) return;
+    }
+    try { await Settings.updateTimetableSlot(id, wd, { start_time: time, instructor: instr || null }); }
+    catch { alert('Could not save the change. Please try again.'); }
+    renderTimetableEditor();
+  }));
+
+  $('ttEditor').querySelectorAll('.tt-del').forEach(b => b.addEventListener('click', async () => {
+    const box = b.closest('.slot'), wd = +box.dataset.wd, id = +box.dataset.id;
+    if (!confirm(`Remove the ${TT_DAYS[wd]} ${box.dataset.orig} class from every week?\n\nBookings already made for upcoming dates are NOT cancelled or notified. Cancel those classes from the Schedule first if anyone is booked.`)) return;
+    try { await Settings.removeTimetableSlot(id, wd); }
+    catch { alert('Could not remove the class. Please try again.'); }
+    renderTimetableEditor();
+  }));
 }
 $('pwForm').addEventListener('submit', async e => {
   e.preventDefault();

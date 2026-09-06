@@ -355,6 +355,33 @@ const Settings = {
     });
     Object.assign(RULES, rules);
   },
+  // recurring weekly timetable management (staff)
+  async addTimetableSlot(weekday, time, typeKey, instructor) {
+    const [row] = await ppApi('timetable', {
+      method: 'POST',
+      body: JSON.stringify({ weekday, start_time: time, type_key: typeKey, instructor: instructor || null }),
+    });
+    (TIMETABLE[weekday] = TIMETABLE[weekday] || []).push([row.start_time, row.type_key, row.instructor, row.id]);
+    TIMETABLE[weekday].sort((a, b) => a[0].localeCompare(b[0]));
+  },
+  async updateTimetableSlot(id, weekday, fields) {
+    await ppApi(`timetable?id=eq.${id}`, {
+      method: 'PATCH',
+      headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify(fields),
+    });
+    const slot = (TIMETABLE[weekday] || []).find(s => s[3] === id);
+    if (slot) {
+      if (fields.start_time) slot[0] = fields.start_time;
+      if ('instructor' in fields) slot[2] = fields.instructor;
+      TIMETABLE[weekday].sort((a, b) => a[0].localeCompare(b[0]));
+    }
+  },
+  async removeTimetableSlot(id, weekday) {
+    await ppApi(`timetable?id=eq.${id}`, { method: 'DELETE', headers: { Prefer: 'return=minimal' } });
+    TIMETABLE[weekday] = (TIMETABLE[weekday] || []).filter(s => s[3] !== id);
+  },
+
   async setPrice(key, pence) {
     await ppApi(`class_types?key=eq.${encodeURIComponent(key)}`, {
       method: 'PATCH',
@@ -386,7 +413,7 @@ async function ppInit() {
   if (Auth.session()) await Auth.ensure();   // keep staff signed in across reloads
   const [types, slots, custom, cancelled, settings, counts] = await Promise.all([
     ppApi('class_types?select=*'),
-    ppApi('timetable?select=weekday,start_time,type_key,instructor'),
+    ppApi('timetable?select=id,weekday,start_time,type_key,instructor'),
     ppApi(`custom_classes?class_date=gte.${today}&select=*`),
     ppApi(`cancelled_classes?class_date=gte.${today}&select=*`),
     ppApi('settings?id=eq.1&select=*'),
@@ -394,7 +421,7 @@ async function ppInit() {
   ]);
   cancelled.forEach(c => { (cache.cancelled[c.class_date] = cache.cancelled[c.class_date] || new Set()).add(c.start_time); });
   types.forEach(t => { CLASS_TYPES[t.key] = { name: t.name, level: t.level, desc: t.descr, custom: t.custom, price: t.price_pence || null }; });
-  slots.forEach(s => { (TIMETABLE[s.weekday] = TIMETABLE[s.weekday] || []).push([s.start_time, s.type_key, s.instructor]); });
+  slots.forEach(s => { (TIMETABLE[s.weekday] = TIMETABLE[s.weekday] || []).push([s.start_time, s.type_key, s.instructor, s.id]); });
   Object.values(TIMETABLE).forEach(day => day.sort((a, b) => a[0].localeCompare(b[0])));
   custom.forEach(c => { (cache.custom[c.class_date] = cache.custom[c.class_date] || []).push({ time: c.start_time, type: c.type_key, instructor: c.instructor || null, id: c.id }); });
   if (settings[0]) {

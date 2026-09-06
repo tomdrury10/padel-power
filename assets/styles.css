@@ -1586,3 +1586,15 @@ nav.links a{white-space:nowrap}
 .d2-wdecl p{font-size:12px;color:#6b6b66;line-height:1.6;margin-bottom:8px}
 .d2-wcheck{display:flex;gap:8px;align-items:flex-start;font-size:13px;color:#1c1c1a;margin:10px 0 14px;cursor:pointer}
 .d2-wcheck input{margin-top:2px;accent-color:#1d7fb8}
+
+/* weekly timetable editor (admin settings) */
+.d2-tt{display:grid;grid-template-columns:repeat(7,1fr);gap:10px}
+.d2-tt .day h3{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#6b6b66;margin-bottom:8px}
+.d2-tt .slot{display:flex;flex-direction:column;gap:6px;border:1px solid #e6e3dc;border-radius:10px;padding:8px;margin-bottom:8px;background:#fff}
+.d2-tt .slot.add{border-style:dashed;background:transparent}
+.d2-tt .slot .d2-input{padding:7px 9px;font-size:12.5px}
+.d2-tt .slot .row{display:flex;gap:6px}
+.d2-tt .slot .row .d2-btn{flex:1;padding:6px 4px;font-size:10.5px;justify-content:center}
+@media(max-width:1200px){.d2-tt{grid-template-columns:repeat(4,1fr)}}
+@media(max-width:760px){.d2-tt{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:460px){.d2-tt{grid-template-columns:1fr}}
