@@ -319,10 +319,34 @@
     </form>
   </div>
 </aside>
+<!-- ===== MOVE / EDIT CLASS DRAWER ===== -->
+<aside class="d2-drawer" id="mvDrawer" role="dialog" aria-modal="true">
+  <div class="d2-dr-head"><span>Edit class</span>
+    <button class="d2-icon" id="mvClose" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
+  </div>
+  <div class="d2-dr-body">
+    <div class="d2-dr-class"><b id="mvClass"></b><span id="mvWhen"></span></div>
+    <form id="mvForm">
+      <label class="d2-label" for="mvTime">Start time</label>
+      <input class="d2-input" id="mvTime" type="time" required>
+      <label class="d2-label" for="mvInstr">Instructor</label>
+      <input class="d2-input" id="mvInstr" type="text" maxlength="40" placeholder="e.g. Gabby">
+      <div id="mvScope">
+        <label class="d2-label">Apply to</label>
+        <div class="d2-seg">
+          <label><input type="radio" name="mvScopeR" value="one" checked><span>Just this class</span></label>
+          <label><input type="radio" name="mvScopeR" value="all"><span id="mvAllLabel">All future weeks</span></label>
+        </div>
+      </div>
+      <p class="d2-hint" id="mvHint"></p>
+      <button class="d2-btn primary block" type="submit">Save changes</button>
+    </form>
+  </div>
+</aside>
 </div>
 
 
-<script src="../assets/pilates-core.js?v=18"></script>
-<script src="../assets/admin.js?v=21"></script>
+<script src="../assets/pilates-core.js?v=19"></script>
+<script src="../assets/admin.js?v=22"></script>
 </body>
 </html>

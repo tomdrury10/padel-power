@@ -163,10 +163,11 @@ function classesFor(d, includeCancelled = false) {
   const base = d < opening ? [] : (TIMETABLE[d.getDay()] || []);
   const extra = cache.custom[iso(d)] || [];
   const off = cache.cancelled[iso(d)] || new Set();
+  // custom entries first: a one-off at the same time overrides the template slot
   const all = [
-    ...base.map(([time, type, instructor]) => ({ time, type, instructor: instructor || null, custom: false })),
     ...extra.map(c => ({ time: c.time, type: c.type, instructor: c.instructor || null, custom: true })),
-  ].sort((a, b) => a.time.localeCompare(b.time));
+    ...base.map(([time, type, instructor]) => ({ time, type, instructor: instructor || null, custom: false })),
+  ].sort((a, b) => a.time.localeCompare(b.time) || (a.custom ? -1 : 1));
   const seen = new Set();
   return all
     .filter(c => CLASS_TYPES[c.type] && !seen.has(c.time) && seen.add(c.time))
@@ -355,6 +356,21 @@ const Settings = {
     });
     Object.assign(RULES, rules);
   },
+  // move a class, calendar-style: one date only, or the weekly slot itself.
+  // The server re-points bookings and texts each member a class_moved message.
+  async moveOccurrence(dateIso, oldTime, newTime, instructor) {
+    return ppApi('rpc/move_class_occurrence', {
+      method: 'POST',
+      body: JSON.stringify({ p_date: dateIso, p_old_time: oldTime, p_new_time: newTime, p_instructor: instructor || null }),
+    });
+  },
+  async moveTemplateSlot(slotId, newTime, instructor) {
+    return ppApi('rpc/move_class_template', {
+      method: 'POST',
+      body: JSON.stringify({ p_id: slotId, p_new_time: newTime, p_instructor: instructor || null }),
+    });
+  },
+
   // recurring weekly timetable management (staff)
   async addTimetableSlot(weekday, time, typeKey, instructor) {
     const [row] = await ppApi('timetable', {

@@ -238,6 +238,7 @@ function renderDetail() {
     </div>
     <div class="d2-det-actions">
       ${!c.cancelled && free > 0 ? `<button class="d2-btn primary" id="detAdd">+ New booking</button>` : ''}
+      ${!c.cancelled ? `<button class="d2-btn ghost" id="detEdit">Edit class</button>` : ''}
       ${c.cancelled
         ? `<button class="d2-btn ghost" id="detRestore">Put class back on</button>`
         : `<button class="d2-btn danger" id="detCancelClass">Cancel class</button>`}
@@ -263,6 +264,9 @@ function renderDetail() {
     }));
   const add = $('detAdd');
   if (add) add.addEventListener('click', () => openBooking(c.id));
+
+  const edit = $('detEdit');
+  if (edit) edit.addEventListener('click', () => openMove(c));
 
   const cancelCls = $('detCancelClass');
   if (cancelCls) cancelCls.addEventListener('click', async () => {
@@ -532,10 +536,18 @@ function renderTimetableEditor() {
       if ((TIMETABLE[wd] || []).some(s => s[0] === time && s[3] !== id)) {
         alert(`There is already a class at ${time} on ${TT_DAYS[wd]}.`); return;
       }
-      if (!confirm(`Move the ${TT_DAYS[wd]} ${box.dataset.orig} class to ${time} every week?\n\nBookings already made for upcoming dates stay at the old time and are NOT moved or notified. Cancel those classes from the Schedule first if anyone is booked.`)) return;
+      if (!confirm(`Move the ${TT_DAYS[wd]} ${box.dataset.orig} class to ${time} every week from now on?\n\nMembers already booked onto upcoming dates are moved with the class and get a text about the change.`)) return;
     }
-    try { await Settings.updateTimetableSlot(id, wd, { start_time: time, instructor: instr || null }); }
-    catch { alert('Could not save the change. Please try again.'); }
+    try {
+      await Settings.moveTemplateSlot(id, time, instr);
+      const slot = (TIMETABLE[wd] || []).find(s => s[3] === id);
+      if (slot) { slot[0] = time; slot[2] = instr || null; TIMETABLE[wd].sort((a, b) => a[0].localeCompare(b[0])); }
+      await Store.loadBookings().catch(() => {});
+    } catch (err) {
+      alert(String(err.message).includes('slot_taken')
+        ? `There is already a class at ${time} on ${TT_DAYS[wd]}.`
+        : 'Could not save the change. Please try again.');
+    }
     renderTimetableEditor();
   }));
 
@@ -745,6 +757,51 @@ $('bkAnother').addEventListener('click', () => {
   openBooking(id);
 });
 $('bkDoneClose').addEventListener('click', closeDrawers);
+
+/* --- move / edit class drawer --- */
+let mvClassInfo = null;
+function openMove(c) {
+  mvClassInfo = c;
+  $('mvClass').textContent = c.t.name;
+  $('mvWhen').textContent = `${fmtFull.format(c.date)} · ${c.time}${c.instructor ? ' · ' + c.instructor : ''}`;
+  $('mvTime').value = c.time;
+  $('mvInstr').value = c.instructor || '';
+  // custom one-offs have no recurring series to apply to
+  $('mvScope').style.display = c.custom ? 'none' : '';
+  $('mvAllLabel').textContent = `All future ${fmtDay.format(c.date)} ${c.time} classes`;
+  $('mvForm').mvScopeR.value = 'one';
+  $('mvHint').textContent = 'Members already booked are moved with the class and get a text about the change.';
+  openDrawer('mvDrawer');
+}
+$('mvClose').addEventListener('click', closeDrawers);
+$('mvForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const c = mvClassInfo;
+  const newTime = $('mvTime').value;
+  const instr = $('mvInstr').value.trim();
+  const scope = c.custom ? 'one' : e.target.mvScopeR.value;
+  const btn = e.target.querySelector('button[type=submit]');
+  if (newTime === c.time && (instr || '') === (c.instructor || '')) { closeDrawers(); return; }
+  btn.disabled = true;
+  try {
+    if (scope === 'all') {
+      const slot = (TIMETABLE[c.date.getDay()] || []).find(s => s[0] === c.time);
+      if (!slot) throw new Error('no_such_class');
+      await Settings.moveTemplateSlot(slot[3], newTime, instr);
+    } else {
+      await Settings.moveOccurrence(iso(c.date), c.time, newTime, instr);
+    }
+  } catch (err) {
+    btn.disabled = false;
+    const msg = String(err.message);
+    alert(msg.includes('slot_taken')
+      ? 'There is already a class at that time. Pick a different time.'
+      : 'Could not move the class. Please try again.');
+    return;
+  }
+  // bookings, custom classes and cancellations all changed server-side: reload clean
+  location.href = location.pathname + '?page=schedule';
+});
 
 /* --- add class drawer --- */
 function renderTypeOptions() {
