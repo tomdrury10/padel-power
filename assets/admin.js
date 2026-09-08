@@ -7,10 +7,6 @@
    Everything here shows on the public booking page immediately.
    ============================================================ */
 
-// Make.com master webhook: enquiry replies route through here to Outlook.
-// Branch on the `type` field in the Make scenario.
-const PP_MAKE_WEBHOOK = 'https://hook.eu2.make.com/gv6vj6l1s6cdiambazifcxho189o9zo7';
-
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -464,11 +460,8 @@ function renderEnquiries() {
       <form class="d2-enq-form" data-id="${e.id}">
         <textarea class="d2-input" name="body" rows="4" required maxlength="4000" placeholder="Hi ${esc(e.name.split(' ')[0])}, thanks for getting in touch…"></textarea>
         <div class="d2-form-row">
-          <select class="d2-input" name="sender" required style="max-width:130px">
-            ${ENQ_STAFF.map(w => `<option value="${w}"${e.assignee === w ? ' selected' : ''}>${w}</option>`).join('')}
-          </select>
-          <button class="d2-btn primary sm" type="submit">Send email</button>
-          <span class="d2-sub" style="margin:0">Sends from the Padel Power inbox via Outlook.</span>
+          <button class="d2-btn primary sm" type="submit">Open in Outlook</button>
+          <span class="d2-sub" style="margin:0">Opens a pre-filled reply for you to check and send.</span>
         </div>
       </form>` : ''}
     </div>`).join('') : '<p class="d2-empty">No enquiries here.</p>';
@@ -500,27 +493,16 @@ function renderEnquiries() {
   $('enqList').querySelectorAll('.d2-enq-form').forEach(f =>
     f.addEventListener('submit', async ev => {
       ev.preventDefault();
-      if (!PP_MAKE_WEBHOOK) { alert('Email sending is not wired up yet: the Make webhook URL needs adding first.'); return; }
       const e = enqRows.find(x => String(x.id) === f.dataset.id);
       const body = f.body.value.trim();
-      const sender = f.sender.value;
-      const btn = f.querySelector('button[type=submit]');
-      btn.disabled = true;
+      const when = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(e.created_at));
+      const subject = `Re: your ${(e.topic || 'enquiry').toLowerCase().replace(/^enquiry$/, '')} enquiry - Padel Power`.replace('  ', ' ');
+      // quote the original underneath so the email reads as a reply in the chain
+      const full = `${body}\n\n----------------------------------------\nOn ${when}, ${e.name} wrote:\n\n${e.message}`;
+      location.href = `mailto:${encodeURIComponent(e.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(full)}`;
+      // log the reply on the enquiry so the team can see it was answered
+      const replies = [...(e.replies || []), { body, by: e.assignee || Auth.email() || 'Staff', at: new Date().toISOString() }];
       try {
-        const res = await fetch(PP_MAKE_WEBHOOK, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'enquiry_reply',
-            to_email: e.email,
-            to_name: e.name,
-            subject: `Re: your ${(e.topic || 'enquiry').toLowerCase()} enquiry — Padel Power`,
-            body,
-            sent_by: sender,
-          }),
-        });
-        if (!res.ok) throw new Error('webhook_failed');
-        const replies = [...(e.replies || []), { body, by: sender, at: new Date().toISOString() }];
         await ppApi(`enquiries?id=eq.${e.id}`, {
           method: 'PATCH', headers: { Prefer: 'return=minimal' },
           body: JSON.stringify({ replies, handled_at: e.handled_at || new Date().toISOString() }),
@@ -529,11 +511,7 @@ function renderEnquiries() {
         e.handled_at = e.handled_at || new Date().toISOString();
         enqReplyOpen = null;
         await loadEnquiries();
-      } catch {
-        alert('Could not send the reply. Please try again.');
-        btn.disabled = false;
-        return;
-      }
+      } catch {}
       renderEnquiries();
     }));
 }
