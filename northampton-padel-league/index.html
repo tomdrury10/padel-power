@@ -163,6 +163,46 @@
   </div>
 </section>
 
+<section class="sec" id="standings">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <span class="eyebrow">Live standings</span>
+      <h2 class="h-giant">Where you sit<br><span class="outline">right now</span></h2>
+      <p class="lede" style="margin-top:22px">Updated automatically from Playtomic. Mens Doubles, Season 5.</p>
+    </div>
+    <div id="league-table" data-league="52ddffe9-1188-47d2-8811-ac2dd7e31a63"></div>
+  </div>
+</section>
+
+<style>
+/* Live league standings table */
+.ls-tabs{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 22px}
+.ls-tab{appearance:none;cursor:pointer;font:600 12px/1 'IBM Plex Mono',monospace;letter-spacing:.06em;
+  text-transform:uppercase;padding:10px 14px;border-radius:999px;color:var(--paper-dim,#9aa0a6);
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.10);transition:.18s}
+.ls-tab:hover{color:#fff;border-color:rgba(255,255,255,.28)}
+.ls-tab.on{background:var(--blue,#2b6fff);border-color:transparent;color:#fff}
+.ls-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid rgba(255,255,255,.10);border-radius:14px}
+.ls-table{width:100%;min-width:760px;border-collapse:collapse;font-size:14px}
+.ls-table th,.ls-table td{padding:13px 10px;text-align:right;white-space:nowrap;
+  border-bottom:1px solid rgba(255,255,255,.07)}
+.ls-table tbody tr:last-child td{border-bottom:0}
+.ls-table thead th{font:600 11px/1 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--paper-dim,#9aa0a6);background:rgba(255,255,255,.03);cursor:help}
+.ls-table tbody tr:hover td{background:rgba(255,255,255,.03)}
+.ls-table .ls-pos{width:46px;text-align:center;color:var(--paper-dim,#9aa0a6);
+  font:600 13px/1 'IBM Plex Mono',monospace}
+.ls-table .ls-team{text-align:left;width:100%;font-weight:600}
+.ls-lvl{display:inline-block;min-width:38px;margin-right:10px;padding:3px 6px;border-radius:6px;
+  font:600 11px/1.4 'IBM Plex Mono',monospace;text-align:center;color:var(--blue,#2b6fff);
+  background:rgba(43,111,255,.14)}
+.ls-meta{margin:16px 0 0;font-size:13px;color:var(--paper-dim,#9aa0a6)}
+.ls-meta a{color:inherit}
+.ls-empty{color:var(--paper-dim,#9aa0a6)}
+@media(max-width:640px){.ls-table{font-size:13px}.ls-table th,.ls-table td{padding:11px 8px}}
+</style>
+<script src="../assets/league-standings.js?v=2" defer></script>
+
 <section class="sec academy">
   <div class="wrap">
     <div class="split">
