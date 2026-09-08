@@ -1599,3 +1599,34 @@ nav.links a{white-space:nowrap}
 @media(max-width:1200px){.d2-tt{grid-template-columns:repeat(4,1fr)}}
 @media(max-width:760px){.d2-tt{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:460px){.d2-tt{grid-template-columns:1fr}}
+
+/* enquiry assignee + replies */
+.d2-enq .ft .enq-assign{width:auto;padding:6px 26px 6px 10px;font-size:12px}
+.d2-enq-reply{border-left:3px solid #1d7fb8;background:#f4f7f9;border-radius:0 8px 8px 0;padding:8px 12px;margin:8px 0}
+.d2-enq-reply .who{font-family:var(--mono);font-size:10px;color:#6b6b66;display:block;margin-bottom:4px}
+.d2-enq-reply p{font-size:13px;color:#1c1c1a;line-height:1.55;white-space:pre-wrap}
+.d2-enq-form{margin-top:10px;display:flex;flex-direction:column;gap:8px}
+.d2-enq-form textarea{resize:vertical;min-height:76px}
+
+/* reports */
+.d2-rpt-row{display:grid;grid-template-columns:minmax(90px,1fr) 120px 44px minmax(120px,1.2fr);gap:10px;align-items:center;padding:10px 2px;border-bottom:1px solid var(--ln)}
+.d2-rpt-row:last-child{border-bottom:none}
+.d2-rpt-row .nm{font-size:13.5px;font-weight:640}
+.d2-rpt-row .pc{font-family:var(--mono);font-size:12px;text-align:right}
+.d2-rpt-row .ct{font-family:var(--mono);font-size:10.5px;color:var(--tx3);text-align:right}
+@media(max-width:640px){.d2-rpt-row{grid-template-columns:1fr 90px 40px}.d2-rpt-row .ct{display:none}}
+
+/* pilates instructor profiles */
+.pinstr-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.pinstr{border:1px solid rgba(255,255,255,.1);border-radius:16px;overflow:hidden;background:rgba(255,255,255,.03);display:flex;flex-direction:column}
+.pinstr-photo{aspect-ratio:4/5;overflow:hidden}
+.pinstr-photo img{width:100%;height:100%;object-fit:cover;display:block}
+.pinstr-photo.ph{display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,rgba(29,127,184,.28),rgba(29,127,184,.06))}
+.pinstr-photo.ph span{font-family:var(--mono);font-size:44px;letter-spacing:.1em;color:rgba(255,255,255,.55)}
+.pinstr-body{padding:20px 22px 24px;display:flex;flex-direction:column;gap:10px;flex:1}
+.pinstr-body h3{font-size:22px;font-weight:740}
+.pinstr-role{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--blue)}
+.pinstr-body p{font-size:14px;line-height:1.65;color:var(--paper-dim,rgba(255,255,255,.72))}
+.pinstr-fit{margin-top:auto;font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--paper-faint,rgba(255,255,255,.45));border-top:1px solid rgba(255,255,255,.1);padding-top:12px}
+@media(max-width:960px){.pinstr-grid{grid-template-columns:1fr}.pinstr{flex-direction:row}.pinstr-photo{width:150px;aspect-ratio:auto;flex:none}}
+@media(max-width:560px){.pinstr{flex-direction:column}.pinstr-photo{width:100%;aspect-ratio:16/10}}

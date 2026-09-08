@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="icon" type="image/png" href="../assets/favicon.png">
-<link rel="stylesheet" href="../assets/styles.css?v=35">
+<link rel="stylesheet" href="../assets/styles.css?v=36">
 </head>
 <body class="d2">
 
@@ -38,6 +38,10 @@
       <button data-page="enquiries">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 5h16v14H4z"/><path d="M4 7l8 6 8-6"/></svg>
         Enquiries <span class="d2-badge" id="enqBadge" hidden></span>
+      </button>
+      <button data-page="reports" id="navReports">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 20V10M10 20V4M16 20v-8M21 20H3"/></svg>
+        Reports
       </button>
       <button data-page="settings">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.34 1.87l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.7 1.7 0 00-1.87-.34 1.7 1.7 0 00-1 1.55V21a2 2 0 11-4 0v-.09a1.7 1.7 0 00-1-1.55 1.7 1.7 0 00-1.87.34l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.7 1.7 0 00.34-1.87 1.7 1.7 0 00-1.55-1H3a2 2 0 110-4h.09a1.7 1.7 0 001.55-1 1.7 1.7 0 00-.34-1.87l-.06-.06a2 2 0 112.83-2.83l.06.06a1.7 1.7 0 001.87.34h0a1.7 1.7 0 001-1.55V3a2 2 0 114 0v.09a1.7 1.7 0 001 1.55h0a1.7 1.7 0 001.87-.34l.06-.06a2 2 0 112.83 2.83l-.06.06a1.7 1.7 0 00-.34 1.87v0a1.7 1.7 0 001.55 1H21a2 2 0 110 4h-.09a1.7 1.7 0 00-1.55 1z"/></svg>
@@ -149,9 +153,46 @@
           <button class="on" data-state="new">New</button>
           <button data-state="all">All</button>
         </div>
+        <div class="d2-filters" id="enqAssignFilter">
+          <button class="on" data-who="">Everyone</button>
+          <button data-who="Grace">Grace</button>
+          <button data-who="Joe">Joe</button>
+          <button data-who="none">Unassigned</button>
+        </div>
       </div>
       <div class="d2-card">
         <div id="enqList"></div>
+      </div>
+    </section>
+
+    <!-- ===== REPORTS ===== -->
+    <section class="d2-page" id="pgReports" hidden>
+      <div class="d2-toolbar">
+        <div class="d2-filters" id="rptRange">
+          <button data-days="7">Last 7 days</button>
+          <button class="on" data-days="30">Last 30 days</button>
+          <button data-days="-14">Next 14 days</button>
+        </div>
+      </div>
+      <div class="d2-stats" id="rptStats"></div>
+      <div class="d2-cols even" style="margin-top:16px">
+        <div class="d2-card">
+          <div class="d2-card-head"><h2>Occupancy by class type</h2></div>
+          <div id="rptTypes"></div>
+        </div>
+        <div class="d2-card">
+          <div class="d2-card-head"><h2>Instructor breakdown</h2></div>
+          <p class="d2-sub">Cost is the instructor's hourly rate for each one-hour class taught. Revenue counts card payments taken online; front desk and phone bookings show no revenue here.</p>
+          <div id="rptInstr"></div>
+        </div>
+      </div>
+      <div class="d2-card" style="margin-top:16px">
+        <div class="d2-card-head"><h2>Class by class</h2></div>
+        <table class="d2-table" id="rptTable">
+          <thead><tr><th>When</th><th>Class</th><th>Instructor</th><th>Booked</th><th>Revenue</th><th>Cost</th><th>Profit</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <p class="d2-empty" id="rptEmpty" hidden>No classes in this period.</p>
       </div>
     </section>
 
@@ -204,6 +245,22 @@
             <div class="d2-form-row">
               <button class="d2-btn primary" type="submit">Update password</button>
               <span class="d2-saved" id="pwSaved" hidden>Password updated</span>
+            </div>
+          </form>
+        </div>
+        <div class="d2-card" id="instrCard">
+          <div class="d2-card-head"><h2>Instructors</h2></div>
+          <p class="d2-sub">Instructors appear in the dropdown when adding or editing a class. The hourly rate drives the cost side of the financial report. Deactivating keeps their history but removes them from the dropdown.</p>
+          <div id="instrList"></div>
+          <form class="d2-form" id="newInstr">
+            <div class="d2-form-row">
+              <input name="niName" type="text" placeholder="Name" required maxlength="40">
+              <input name="niRate" type="number" placeholder="£/hour" min="0" max="500" step="0.01" value="40" required style="max-width:110px">
+            </div>
+            <div class="d2-form-row">
+              <input name="niEmail" type="email" placeholder="Email (for cancellation notices)" maxlength="80">
+              <input name="niPhone" type="tel" placeholder="Mobile" maxlength="20">
+              <button class="d2-btn primary" type="submit">Add instructor</button>
             </div>
           </form>
         </div>
@@ -280,8 +337,8 @@
       <input class="d2-input" id="clTime" name="clTime" type="time" required>
       <label class="d2-label" for="clType">Class type</label>
       <select class="d2-input" id="clType" name="clType" required></select>
-      <label class="d2-label" for="clInstructor">Instructor (optional)</label>
-      <input class="d2-input" id="clInstructor" name="clInstructor" type="text" maxlength="40" placeholder="e.g. Gabby">
+      <label class="d2-label" for="clInstructor">Instructor</label>
+      <select class="d2-input" id="clInstructor" name="clInstructor"></select>
       <p class="d2-hint">One-hour class. It appears on the public booking page straight away. New class types can be created in Settings.</p>
       <button class="d2-btn primary block" type="submit">Add to schedule</button>
     </form>
@@ -330,7 +387,7 @@
       <label class="d2-label" for="mvTime">Start time</label>
       <input class="d2-input" id="mvTime" type="time" required>
       <label class="d2-label" for="mvInstr">Instructor</label>
-      <input class="d2-input" id="mvInstr" type="text" maxlength="40" placeholder="e.g. Gabby">
+      <select class="d2-input" id="mvInstr"></select>
       <div id="mvScope">
         <label class="d2-label">Apply to</label>
         <div class="d2-seg">
@@ -346,7 +403,7 @@
 </div>
 
 
-<script src="../assets/pilates-core.js?v=19"></script>
-<script src="../assets/admin.js?v=22"></script>
+<script src="../assets/pilates-core.js?v=20"></script>
+<script src="../assets/admin.js?v=23"></script>
 </body>
 </html>

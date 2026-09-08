@@ -7,6 +7,10 @@
    Everything here shows on the public booking page immediately.
    ============================================================ */
 
+// Make.com master webhook: enquiry replies route through here to Outlook.
+// Branch on the `type` field in the Make scenario.
+const PP_MAKE_WEBHOOK = ''; // paste the hook.eu2.make.com URL, then replies go live
+
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -57,12 +61,28 @@ function upcoming(days = RULES.windowDays) {
   return out;
 }
 
+/* ---------- roles + instructors ---------- */
+const isAdmin = () => PP_ROLE !== 'instructor';
+function applyRole() {
+  if (isAdmin()) return;
+  $('addClassBtn').hidden = true;
+  $('navReports').hidden = true; // financials are admin-only
+}
+// options for an instructor dropdown; keeps a legacy free-text name selectable
+function instrOptions(selected) {
+  const names = Instructors.active().map(i => i.name);
+  if (selected && !names.includes(selected)) names.unshift(selected);
+  return '<option value="">No instructor</option>'
+    + names.map(n => `<option value="${esc(n)}"${n === selected ? ' selected' : ''}>${esc(n)}</option>`).join('');
+}
+
 /* ---------- navigation ---------- */
-const TITLES = { overview: 'Overview', schedule: 'Schedule', bookings: 'Bookings', enquiries: 'Enquiries', settings: 'Settings' };
+const TITLES = { overview: 'Overview', schedule: 'Schedule', bookings: 'Bookings', enquiries: 'Enquiries', reports: 'Reports', settings: 'Settings' };
 function goto(p) {
+  if (p === 'reports' && !isAdmin()) p = 'overview';
   page = p;
   document.querySelectorAll('.d2-nav button').forEach(b => b.classList.toggle('on', b.dataset.page === p));
-  ['Overview', 'Schedule', 'Bookings', 'Enquiries', 'Settings'].forEach(n => { $('pg' + n).hidden = n.toLowerCase() !== p; });
+  ['Overview', 'Schedule', 'Bookings', 'Enquiries', 'Reports', 'Settings'].forEach(n => { $('pg' + n).hidden = n.toLowerCase() !== p; });
   $('pageTitle').textContent = TITLES[p];
   render();
 }
@@ -74,6 +94,7 @@ function render() {
   if (page === 'schedule') renderSchedule();
   if (page === 'bookings') renderBookings();
   if (page === 'enquiries') renderEnquiries();
+  if (page === 'reports') renderReports();
   if (page === 'settings') {
     // don't wipe half-typed edits when the 60s poll re-renders
     const a = document.activeElement;
@@ -238,10 +259,11 @@ function renderDetail() {
     </div>
     <div class="d2-det-actions">
       ${!c.cancelled && free > 0 ? `<button class="d2-btn primary" id="detAdd">+ New booking</button>` : ''}
-      ${!c.cancelled ? `<button class="d2-btn ghost" id="detEdit">Edit class</button>` : ''}
-      ${c.cancelled
-        ? `<button class="d2-btn ghost" id="detRestore">Put class back on</button>`
-        : `<button class="d2-btn danger" id="detCancelClass">Cancel class</button>`}
+      ${!c.cancelled && isAdmin() ? `<button class="d2-btn ghost" id="detEdit">Edit class</button>` : ''}
+      ${!isAdmin() ? ''
+        : c.cancelled
+          ? `<button class="d2-btn ghost" id="detRestore">Put class back on</button>`
+          : `<button class="d2-btn danger" id="detCancelClass">Cancel class</button>`}
     </div>`;
   el.querySelectorAll('.wv-view').forEach(b =>
     b.addEventListener('click', () => openWaiverView(b.dataset.em)));
@@ -398,7 +420,8 @@ async function openWaiverView(email) {
 /* ============================================================
    ENQUIRIES (contact form submissions)
    ============================================================ */
-let enqRows = [], enqState = 'new';
+let enqRows = [], enqState = 'new', enqWho = '', enqReplyOpen = null;
+const ENQ_STAFF = ['Grace', 'Joe'];
 async function loadEnquiries() {
   enqRows = await ppApi('enquiries?select=*&order=created_at.desc');
   const unread = enqRows.filter(e => !e.handled_at).length;
@@ -407,23 +430,49 @@ async function loadEnquiries() {
   badge.hidden = unread === 0;
 }
 function renderEnquiries() {
-  const rows = enqState === 'new' ? enqRows.filter(e => !e.handled_at) : enqRows;
+  let rows = enqState === 'new' ? enqRows.filter(e => !e.handled_at) : enqRows;
+  if (enqWho === 'none') rows = rows.filter(e => !e.assignee);
+  else if (enqWho) rows = rows.filter(e => e.assignee === enqWho);
+  const fmtWhen = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
   $('enqList').innerHTML = rows.length ? rows.map(e => `
     <div class="d2-enq ${e.handled_at ? 'done' : ''}">
       <div class="hd">
         <div>
           <b>${esc(e.name)}</b>
           <span class="d2-tag">${esc(e.topic || 'Enquiry')}</span>
+          ${e.assignee ? `<span class="d2-tag online">${esc(e.assignee)}</span>` : ''}
         </div>
-        <span class="when">${new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(e.created_at))}</span>
+        <span class="when">${fmtWhen.format(new Date(e.created_at))}</span>
       </div>
       <p class="msg">${esc(e.message)}</p>
+      ${(e.replies || []).map(r => `
+        <div class="d2-enq-reply">
+          <span class="who">Replied by ${esc(r.by)} · ${fmtWhen.format(new Date(r.at))}</span>
+          <p>${esc(r.body)}</p>
+        </div>`).join('')}
       <div class="ft">
         <a href="mailto:${encodeURIComponent(e.email)}">${esc(e.email)}</a>
         ${e.phone ? `<a href="tel:${encodeURIComponent(e.phone)}">${esc(e.phone)}</a>` : ''}
+        <select class="d2-input enq-assign" data-id="${e.id}" title="Assign to">
+          <option value="">Unassigned</option>
+          ${ENQ_STAFF.map(w => `<option value="${w}"${e.assignee === w ? ' selected' : ''}>${w}</option>`).join('')}
+        </select>
+        <button class="d2-btn ghost sm enq-reply" data-id="${e.id}">${enqReplyOpen === String(e.id) ? 'Close reply' : 'Reply'}</button>
         ${e.handled_at ? '<span class="d2-tag">Handled</span>' : `<button class="d2-btn ghost sm enq-done" data-id="${e.id}">Mark handled</button>`}
       </div>
+      ${enqReplyOpen === String(e.id) ? `
+      <form class="d2-enq-form" data-id="${e.id}">
+        <textarea class="d2-input" name="body" rows="4" required maxlength="4000" placeholder="Hi ${esc(e.name.split(' ')[0])}, thanks for getting in touch…"></textarea>
+        <div class="d2-form-row">
+          <select class="d2-input" name="sender" required style="max-width:130px">
+            ${ENQ_STAFF.map(w => `<option value="${w}"${e.assignee === w ? ' selected' : ''}>${w}</option>`).join('')}
+          </select>
+          <button class="d2-btn primary sm" type="submit">Send email</button>
+          <span class="d2-sub" style="margin:0">Sends from the Padel Power inbox via Outlook.</span>
+        </div>
+      </form>` : ''}
     </div>`).join('') : '<p class="d2-empty">No enquiries here.</p>';
+
   $('enqList').querySelectorAll('.enq-done').forEach(b =>
     b.addEventListener('click', async () => {
       try {
@@ -432,12 +481,213 @@ function renderEnquiries() {
       } catch { alert('Could not update that enquiry.'); }
       renderEnquiries();
     }));
+  $('enqList').querySelectorAll('.enq-assign').forEach(sel =>
+    sel.addEventListener('change', async () => {
+      try {
+        await ppApi(`enquiries?id=eq.${sel.dataset.id}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ assignee: sel.value || null }) });
+        const row = enqRows.find(e => String(e.id) === sel.dataset.id);
+        if (row) row.assignee = sel.value || null;
+      } catch { alert('Could not assign the enquiry. Has the database migration been run?'); }
+      renderEnquiries();
+    }));
+  $('enqList').querySelectorAll('.enq-reply').forEach(b =>
+    b.addEventListener('click', () => {
+      enqReplyOpen = enqReplyOpen === b.dataset.id ? null : b.dataset.id;
+      renderEnquiries();
+      const f = $('enqList').querySelector('.d2-enq-form textarea');
+      if (f) f.focus();
+    }));
+  $('enqList').querySelectorAll('.d2-enq-form').forEach(f =>
+    f.addEventListener('submit', async ev => {
+      ev.preventDefault();
+      if (!PP_MAKE_WEBHOOK) { alert('Email sending is not wired up yet: the Make webhook URL needs adding first.'); return; }
+      const e = enqRows.find(x => String(x.id) === f.dataset.id);
+      const body = f.body.value.trim();
+      const sender = f.sender.value;
+      const btn = f.querySelector('button[type=submit]');
+      btn.disabled = true;
+      try {
+        const res = await fetch(PP_MAKE_WEBHOOK, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'enquiry_reply',
+            to_email: e.email,
+            to_name: e.name,
+            subject: `Re: your ${(e.topic || 'enquiry').toLowerCase()} enquiry — Padel Power`,
+            body,
+            sent_by: sender,
+          }),
+        });
+        if (!res.ok) throw new Error('webhook_failed');
+        const replies = [...(e.replies || []), { body, by: sender, at: new Date().toISOString() }];
+        await ppApi(`enquiries?id=eq.${e.id}`, {
+          method: 'PATCH', headers: { Prefer: 'return=minimal' },
+          body: JSON.stringify({ replies, handled_at: e.handled_at || new Date().toISOString() }),
+        });
+        e.replies = replies;
+        e.handled_at = e.handled_at || new Date().toISOString();
+        enqReplyOpen = null;
+        await loadEnquiries();
+      } catch {
+        alert('Could not send the reply. Please try again.');
+        btn.disabled = false;
+        return;
+      }
+      renderEnquiries();
+    }));
 }
+$('enqAssignFilter').querySelectorAll('button').forEach(b =>
+  b.addEventListener('click', () => {
+    enqWho = b.dataset.who;
+    $('enqAssignFilter').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    renderEnquiries();
+  }));
 $('enqFilter').querySelectorAll('button').forEach(b =>
   b.addEventListener('click', () => {
     enqState = b.dataset.state;
     $('enqFilter').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
     renderEnquiries();
+  }));
+
+/* ============================================================
+   REPORTS — occupancy + revenue vs instructor cost
+   ============================================================ */
+let rptDays = 30, rptLoaded = false;
+const DEFAULT_RATE = 4000; // pence per hour when an instructor isn't matched
+
+// past cancelled/custom rows aren't loaded at boot (ppInit only fetches from
+// today), so pull the last 60 days into the same caches once
+async function loadReportRange() {
+  if (rptLoaded) return; rptLoaded = true;
+  const from = iso(addDays(startOfToday(), -60));
+  const today = iso(startOfToday());
+  try {
+    const [customPast, cancelledPast] = await Promise.all([
+      ppApi(`custom_classes?class_date=lt.${today}&class_date=gte.${from}&select=*`),
+      ppApi(`cancelled_classes?class_date=lt.${today}&class_date=gte.${from}&select=*`),
+    ]);
+    customPast.forEach(c => { (cache.custom[c.class_date] = cache.custom[c.class_date] || []).push({ time: c.start_time, type: c.type_key, instructor: c.instructor || null, id: c.id }); });
+    cancelledPast.forEach(c => { (cache.cancelled[c.class_date] = cache.cancelled[c.class_date] || new Set()).add(c.start_time); });
+  } catch {}
+}
+
+function reportOccurrences() {
+  const now = new Date();
+  const upcoming = rptDays < 0;
+  const dates = upcoming
+    ? Array.from({ length: -rptDays }, (_, i) => addDays(startOfToday(), i))
+    : Array.from({ length: rptDays }, (_, i) => addDays(startOfToday(), i - rptDays + 1));
+  const list = [];
+  dates.forEach(d => {
+    classesFor(d, true).forEach(c => {
+      const info = classInfo(d, c);
+      const started = classStart(info.id) < now;
+      if (upcoming ? started : !started) return;
+      list.push(info);
+    });
+  });
+  return list;
+}
+
+function classMoney(c) {
+  const paid = Store.attendees(c.id).filter(p => p.paid && !p.refunded);
+  const revenue = paid.reduce((n, p) => n + (p.amount || 0), 0);
+  const cost = c.cancelled ? 0 : (Instructors.byName(c.instructor)?.rate ?? DEFAULT_RATE);
+  return { revenue, cost, profit: revenue - cost };
+}
+
+async function renderReports() {
+  await loadReportRange();
+  const all = reportOccurrences();
+  const occ = all.filter(c => !c.cancelled);
+  const upcoming = rptDays < 0;
+
+  const beds = occ.length * RULES.maxRiders;
+  const booked = occ.reduce((n, c) => n + c.count, 0);
+  const fill = beds ? Math.round(booked / beds * 100) : 0;
+  const money = occ.map(classMoney);
+  const revenue = money.reduce((n, m) => n + m.revenue, 0);
+  const cost = money.reduce((n, m) => n + m.cost, 0);
+
+  $('rptStats').innerHTML = [
+    { n: occ.length, l: upcoming ? 'Classes scheduled' : 'Classes run' },
+    { n: `${booked}/${beds}`, l: 'Beds filled', bar: fill },
+    { n: fill + '%', l: 'Occupancy' },
+    { n: gbp(revenue), l: 'Online revenue' },
+    { n: (revenue - cost < 0 ? '−' : '') + gbp(Math.abs(revenue - cost)), l: `Profit after £${cost / 100} instructor cost`, warn: revenue - cost < 0 },
+  ].map(k => `
+    <div class="d2-stat ${k.warn ? 'warn' : ''}">
+      <b>${k.n}</b><span>${k.l}</span>
+      ${k.bar != null ? `<div class="d2-mini"><i style="width:${k.bar}%"></i></div>` : ''}
+    </div>`).join('');
+
+  // occupancy by class type
+  const byType = {};
+  occ.forEach(c => {
+    const t = byType[c.type] = byType[c.type] || { name: c.t.name, classes: 0, booked: 0 };
+    t.classes++; t.booked += c.count;
+  });
+  const types = Object.values(byType).sort((a, b) => b.classes - a.classes);
+  $('rptTypes').innerHTML = types.length ? types.map(t => {
+    const pct = Math.round(t.booked / (t.classes * RULES.maxRiders) * 100);
+    return `
+    <div class="d2-rpt-row">
+      <span class="nm">${esc(t.name)}</span>
+      <span class="d2-bar"><i class="${pct >= 60 ? 'on' : pct >= 35 ? 'risk' : 'needs'}" style="width:${pct}%"></i></span>
+      <span class="pc">${pct}%</span>
+      <span class="ct">${t.booked}/${t.classes * RULES.maxRiders} beds · ${t.classes} class${t.classes === 1 ? '' : 'es'}</span>
+    </div>`;
+  }).join('') : '<p class="d2-empty">No classes in this period.</p>';
+
+  // per instructor
+  const byInstr = {};
+  occ.forEach(c => {
+    const key = c.instructor || 'Unassigned';
+    const m = classMoney(c);
+    const row = byInstr[key] = byInstr[key] || { classes: 0, booked: 0, revenue: 0, cost: 0 };
+    row.classes++; row.booked += c.count; row.revenue += m.revenue; row.cost += m.cost;
+  });
+  const instrs = Object.entries(byInstr).sort((a, b) => b[1].classes - a[1].classes);
+  $('rptInstr').innerHTML = instrs.length ? `
+    <table class="d2-table">
+      <thead><tr><th>Instructor</th><th>Classes</th><th>Beds</th><th>Revenue</th><th>Cost</th><th>Profit</th></tr></thead>
+      <tbody>${instrs.map(([name, r]) => `
+        <tr>
+          <td class="nm">${esc(name)}</td>
+          <td>${r.classes}</td>
+          <td>${r.booked}/${r.classes * RULES.maxRiders}</td>
+          <td>${gbp(r.revenue)}</td>
+          <td>${gbp(r.cost)}</td>
+          <td>${r.revenue - r.cost < 0 ? '−' + gbp(r.cost - r.revenue) : gbp(r.revenue - r.cost)}</td>
+        </tr>`).join('')}</tbody>
+    </table>` : '<p class="d2-empty">No classes in this period.</p>';
+
+  // class by class
+  const rows = [...occ].sort((a, b) => upcoming
+    ? classStart(a.id) - classStart(b.id)
+    : classStart(b.id) - classStart(a.id));
+  $('rptTable').querySelector('tbody').innerHTML = rows.map(c => {
+    const m = classMoney(c);
+    return `
+    <tr>
+      <td class="ct">${fmtDay.format(c.date)} ${fmtDate.format(c.date)} · ${c.time}</td>
+      <td>${esc(c.t.name)}</td>
+      <td class="ct">${esc(c.instructor || '')}</td>
+      <td>${c.count}/${RULES.maxRiders}</td>
+      <td>${gbp(m.revenue)}</td>
+      <td>${gbp(m.cost)}</td>
+      <td>${m.profit < 0 ? '−' + gbp(-m.profit) : gbp(m.profit)}</td>
+    </tr>`;
+  }).join('');
+  $('rptEmpty').hidden = rows.length > 0;
+  $('rptTable').querySelector('thead').style.display = rows.length ? '' : 'none';
+}
+$('rptRange').querySelectorAll('button').forEach(b =>
+  b.addEventListener('click', () => {
+    rptDays = +b.dataset.days;
+    $('rptRange').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    renderReports();
   }));
 
 /* ============================================================
@@ -452,7 +702,7 @@ function renderSettings() {
         <input class="d2-input tp-price" data-key="${k}" type="number" min="1" max="1000" step="0.01"
           value="${t.price ? t.price / 100 : ''}" placeholder="Free" style="width:100px">
       </label>
-      ${t.custom ? `<button class="d2-btn danger sm tp-del" data-key="${k}">Delete</button>` : '<span class="core">Core class</span>'}
+      ${t.custom && isAdmin() ? `<button class="d2-btn danger sm tp-del" data-key="${k}">Delete</button>` : t.custom ? '' : '<span class="core">Core class</span>'}
     </div>`).join('') + `
     <div class="d2-form-row" style="grid-column:1 / -1;align-items:center;gap:14px">
       <button class="d2-btn primary" id="savePrices">Save prices</button>
@@ -488,20 +738,81 @@ function renderSettings() {
   f.rCutoff.value = RULES.cutoffHours;
   f.rWindow.value = RULES.windowDays;
   $('pwEmail').textContent = Auth.email() || '';
+  $('newType').hidden = !isAdmin();
+  renderInstructors();
   renderTimetableEditor();
 }
+
+/* --- instructors --- */
+function renderInstructors() {
+  if (!isAdmin()) { $('instrCard').hidden = true; return; }
+  $('instrList').innerHTML = INSTRUCTORS.length ? INSTRUCTORS.map(i => `
+    <div class="d2-att ${i.active ? '' : 'off'}" style="${i.active ? '' : 'opacity:.5'}">
+      <div>
+        <b>${esc(i.name)}</b>
+        <span>${esc([i.email, i.phone].filter(Boolean).join(' · ') || 'No contact details')} · £${(i.rate / 100)}/h</span>
+      </div>
+      <button class="d2-btn ghost sm in-edit" data-id="${i.id}">Edit</button>
+      <button class="d2-btn ${i.active ? 'danger' : 'primary'} sm in-toggle" data-id="${i.id}">${i.active ? 'Deactivate' : 'Reactivate'}</button>
+    </div>`).join('') : '<p class="d2-empty">No instructors yet. Add the first one below.</p>';
+  $('instrList').querySelectorAll('.in-toggle').forEach(b =>
+    b.addEventListener('click', async () => {
+      const i = INSTRUCTORS.find(x => x.id === b.dataset.id);
+      try { await Instructors.update(i.id, { active: !i.active }); } catch { alert('Could not update the instructor.'); }
+      renderInstructors();
+    }));
+  $('instrList').querySelectorAll('.in-edit').forEach(b =>
+    b.addEventListener('click', async () => {
+      const i = INSTRUCTORS.find(x => x.id === b.dataset.id);
+      const email = prompt('Email for ' + i.name + ':', i.email); if (email === null) return;
+      const phone = prompt('Mobile for ' + i.name + ':', i.phone); if (phone === null) return;
+      const rate = prompt('Hourly rate (£) for ' + i.name + ':', String(i.rate / 100)); if (rate === null) return;
+      const pence = Math.round(parseFloat(rate) * 100);
+      if (!isFinite(pence) || pence < 0 || pence > 50000) { alert('Enter a rate between £0 and £500.'); return; }
+      try { await Instructors.update(i.id, { email: email.trim() || null, phone: phone.trim() || null, hourly_rate_pence: pence }); }
+      catch { alert('Could not update the instructor.'); }
+      renderInstructors();
+    }));
+}
+$('newInstr').addEventListener('submit', async e => {
+  e.preventDefault();
+  const f = e.target;
+  const pence = Math.round(parseFloat(f.niRate.value) * 100);
+  if (!isFinite(pence) || pence < 0 || pence > 50000) { alert('Enter an hourly rate between £0 and £500.'); return; }
+  const name = f.niName.value.trim();
+  if (INSTRUCTORS.some(i => i.name.toLowerCase() === name.toLowerCase())) { alert('An instructor with that name already exists.'); return; }
+  try {
+    await Instructors.add({ name, email: f.niEmail.value.trim(), phone: f.niPhone.value.trim(), rate: pence });
+    f.reset(); f.niRate.value = '40';
+  } catch (err) {
+    alert(String(err.message).includes('does not exist')
+      ? 'The instructors table is not set up yet. Run the database migration first.'
+      : 'Could not add the instructor. Please try again.');
+  }
+  renderInstructors();
+});
 
 /* --- weekly timetable editor --- */
 const TT_DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const TT_ORDER = [1, 2, 3, 4, 5, 6, 0];
 function renderTimetableEditor() {
+  if (!isAdmin()) {
+    // instructors see the timetable but can't change it
+    $('ttEditor').innerHTML = TT_ORDER.map(wd => `
+      <div class="day">
+        <h3>${TT_DAYS[wd]}</h3>
+        ${(TIMETABLE[wd] || []).map(([time, , instr]) => `
+          <div class="slot"><b style="font-family:var(--mono)">${time}</b><span>${esc(instr || 'No instructor')}</span></div>`).join('') || '<p class="d2-empty">No classes.</p>'}
+      </div>`).join('');
+    return;
+  }
   $('ttEditor').innerHTML = TT_ORDER.map(wd => `
     <div class="day">
       <h3>${TT_DAYS[wd]}</h3>
       ${(TIMETABLE[wd] || []).map(([time, type, instr, id]) => `
         <div class="slot" data-id="${id}" data-wd="${wd}" data-orig="${time}">
           <input class="d2-input tt-time" type="time" value="${time}" required>
-          <input class="d2-input tt-instr" type="text" value="${esc(instr || '')}" placeholder="Instructor" maxlength="40">
+          <select class="d2-input tt-instr">${instrOptions(instr || '')}</select>
           <div class="row">
             <button class="d2-btn ghost sm tt-save" type="button">Save</button>
             <button class="d2-btn danger sm tt-del" type="button">Remove</button>
@@ -509,7 +820,7 @@ function renderTimetableEditor() {
         </div>`).join('')}
       <div class="slot add" data-wd="${wd}">
         <input class="d2-input tt-ntime" type="time">
-        <input class="d2-input tt-ninstr" type="text" placeholder="Instructor" maxlength="40">
+        <select class="d2-input tt-ninstr">${instrOptions('')}</select>
         <div class="row"><button class="d2-btn primary sm tt-add" type="button">+ Add class</button></div>
       </div>
     </div>`).join('');
@@ -765,7 +1076,7 @@ function openMove(c) {
   $('mvClass').textContent = c.t.name;
   $('mvWhen').textContent = `${fmtFull.format(c.date)} · ${c.time}${c.instructor ? ' · ' + c.instructor : ''}`;
   $('mvTime').value = c.time;
-  $('mvInstr').value = c.instructor || '';
+  $('mvInstr').innerHTML = instrOptions(c.instructor || '');
   // custom one-offs have no recurring series to apply to
   $('mvScope').style.display = c.custom ? 'none' : '';
   $('mvAllLabel').textContent = `All future ${fmtDay.format(c.date)} ${c.time} classes`;
@@ -812,6 +1123,7 @@ $('addClassBtn').addEventListener('click', () => {
   $('clDate').innerHTML = weekDates().map(d =>
     `<option value="${iso(d)}">${fmtFull.format(d)}</option>`).join('');
   $('clForm').reset();
+  $('clInstructor').innerHTML = instrOptions('');
   openDrawer('clDrawer');
 });
 $('clForm').addEventListener('submit', async e => {
@@ -847,6 +1159,8 @@ const startPage = new URLSearchParams(location.search).get('page');
 ppReady
   .then(async () => {
     if (!await Auth.ensure()) { location.replace('../login/'); throw new Error('signed_out'); }
+    await Promise.all([Instructors.load().catch(() => {}), loadStaffRole()]);
+    applyRole();
     await Store.loadBookings();
     await loadWaivers();
     return loadEnquiries();

@@ -423,6 +423,53 @@ const Settings = {
   },
 };
 
+/* ---------- staff: instructors + roles ---------- */
+let PP_ROLE = 'admin';   // default until the real role loads; RLS enforces server-side
+const INSTRUCTORS = [];  // { id, name, email, phone, rate, active }
+
+const Instructors = {
+  active() { return INSTRUCTORS.filter(i => i.active); },
+  byName(name) { return name ? INSTRUCTORS.find(i => i.name.toLowerCase() === String(name).toLowerCase()) : null; },
+  async load() {
+    const rows = await ppApi('instructors?select=*&order=name.asc');
+    INSTRUCTORS.length = 0;
+    rows.forEach(r => INSTRUCTORS.push({
+      id: r.id, name: r.name, email: r.email || '', phone: r.phone || '',
+      rate: r.hourly_rate_pence, active: r.active,
+    }));
+  },
+  async add(i) {
+    const [row] = await ppApi('instructors', {
+      method: 'POST',
+      body: JSON.stringify({ name: i.name, email: i.email || null, phone: i.phone || null, hourly_rate_pence: i.rate }),
+    });
+    INSTRUCTORS.push({ id: row.id, name: row.name, email: row.email || '', phone: row.phone || '', rate: row.hourly_rate_pence, active: row.active });
+    INSTRUCTORS.sort((a, b) => a.name.localeCompare(b.name));
+  },
+  async update(id, fields) {
+    await ppApi(`instructors?id=eq.${id}`, {
+      method: 'PATCH', headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify(fields),
+    });
+    const i = INSTRUCTORS.find(x => x.id === id);
+    if (i) {
+      if ('name' in fields) i.name = fields.name;
+      if ('email' in fields) i.email = fields.email || '';
+      if ('phone' in fields) i.phone = fields.phone || '';
+      if ('hourly_rate_pence' in fields) i.rate = fields.hourly_rate_pence;
+      if ('active' in fields) i.active = fields.active;
+    }
+  },
+};
+
+// tables may not exist until the migration has run; everyone stays admin then
+async function loadStaffRole() {
+  try {
+    const rows = await ppApi('staff_roles?select=role');
+    if (rows[0]) PP_ROLE = rows[0].role;
+  } catch {}
+}
+
 /* ---------- boot: load everything the pages need ---------- */
 async function ppInit() {
   const today = iso(new Date());
