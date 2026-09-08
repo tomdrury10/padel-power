@@ -496,7 +496,7 @@ function renderEnquiries() {
       const e = enqRows.find(x => String(x.id) === f.dataset.id);
       const body = f.body.value.trim();
       const when = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(e.created_at));
-      const subject = `Re: your ${(e.topic || 'enquiry').toLowerCase().replace(/^enquiry$/, '')} enquiry - Padel Power`.replace('  ', ' ');
+      const subject = 'RE: Your enquiry - Padel Power';
       // quote the original underneath so the email reads as a reply in the chain
       const full = `${body}\n\n----------------------------------------\nOn ${when}, ${e.name} wrote:\n\n${e.message}`;
       location.href = `mailto:${encodeURIComponent(e.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(full)}`;
