@@ -24,6 +24,10 @@ const ALLOWED_ORIGINS = [
   "https://padelpower.uk",
   "http://localhost:4173",
   "http://localhost:8123",
+  // PREVIEW ONLY: the pilates-member-accounts branch preview, so the full
+  // pay-by-card and buy-a-pack flow can be tried before go-live.
+  // Remove this line when the branch merges.
+  "https://padel-power-demo-git-pilates-member-accounts-juno-northampton.vercel.app",
 ];
 
 const CORS: Record<string, string> = {
