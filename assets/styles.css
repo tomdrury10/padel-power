@@ -1678,7 +1678,13 @@ nav.links a{white-space:nowrap}
 
 /* pack promo */
 .ppack{display:grid;grid-template-columns:1.3fr .9fr;gap:clamp(30px,5vw,80px);align-items:center}
-.ppack .lede{color:var(--paper-dim);margin-top:18px;max-width:52ch}
+/* .h-giant carries no size of its own: it is set by whatever section wraps
+   it. This block sits in the pack grid rather than a .sec-head, so it needs
+   the same scale spelled out or it falls back to the browser default. */
+.ppack-copy{display:flex;flex-direction:column;gap:22px}
+.ppack h2{font-size:clamp(30px,4.2vw,64px)}
+.ppack .eyebrow{margin-bottom:-8px}
+.ppack .lede{color:var(--paper-dim);font-size:clamp(15px,1.25vw,18px);max-width:52ch}
 .ppack-card{
   background:linear-gradient(165deg,var(--panel-2) 0%,var(--panel) 100%);border:1px solid var(--line);
   border-radius:22px;padding:clamp(24px,2.6vw,34px);box-shadow:0 30px 80px rgba(0,0,0,.35);
