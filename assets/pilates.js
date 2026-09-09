@@ -52,9 +52,32 @@ function renderClasses() {
   }).join('');
 }
 
+function renderStrip() {
+  const el = document.getElementById('memberStrip');
+  if (!el) return;
+  if (Auth.userId()) {
+    const credits = Member.credits();
+    const who = Member.profile?.name?.split(' ')[0] || Auth.email();
+    el.innerHTML = `<span>Signed in as <b>${who}</b> · ${credits} class credit${credits === 1 ? '' : 's'}</span><a href="../account/">My account →</a>`;
+  } else {
+    el.innerHTML = `<span>Booking needs a quick account. Sign in or create one on the next step.</span><a href="../account/">Sign in →</a>`;
+  }
+}
+
+function renderPack() {
+  const set = (id, v) => { const n = document.getElementById(id); if (n) n.textContent = v; };
+  set('packPrice', gbp(RULES.packPrice));
+  set('packCount', `${RULES.packCredits} classes`);
+  set('packMonths', `${RULES.packMonths} month${RULES.packMonths === 1 ? '' : 's'}`);
+  const per = RULES.packPrice / RULES.packCredits / 100;
+  set('packLede', `${RULES.packCredits} reformer classes for ${gbp(RULES.packPrice)}, paid up front. That is £${per % 1 ? per.toFixed(2) : per} a class instead of ${gbp(CLASS_TYPES.reformer?.price || 2000)}. Credits sit on your account for ${RULES.packMonths} months and book with one tap. Cancel a class 24 hours ahead and the credit comes straight back.`);
+}
+
 ppReady.then(() => {
   dates = bookableDates();
   activeDate = dates[0];
+  renderStrip();
+  renderPack();
   renderDates();
   renderClasses();
 }).catch(() => {

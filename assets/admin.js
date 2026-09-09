@@ -1,6 +1,6 @@
 /* ============================================================
    Padel Power · Studio Manager (staff dashboard)
-   No login yet (auth to be added before go-live).
+   Staff only (admin / instructor role row). Members are sent to /account/.
    Requires pilates-core.js. Real bookings only.
    Pages: Overview / Schedule (week calendar + detail panel) /
    Bookings (search table) / Settings (types + rules).
@@ -58,7 +58,7 @@ function upcoming(days = RULES.windowDays) {
 }
 
 /* ---------- roles + instructors ---------- */
-const isAdmin = () => PP_ROLE !== 'instructor';
+const isAdmin = () => PP_ROLE === 'admin';
 function applyRole() {
   if (isAdmin()) return;
   $('addClassBtn').hidden = true;
@@ -251,7 +251,7 @@ function renderDetail() {
       ${c.cancelled ? '<p class="d2-empty">This class is cancelled. It no longer appears on the public timetable.</p>' : ''}
       ${people.length ? people.map(p => `
         <div class="d2-att">
-          <div><b>${esc(p.name)}</b><span>${esc(p.phone || '')}${p.email ? ' · ' + esc(p.email) : ''}${p.paid ? ' · Paid ' + gbp(p.amount) : ''}${waiverMark(p.email)}</span></div>
+          <div><b>${esc(p.name)}</b><span>${esc(p.phone || '')}${p.email ? ' · ' + esc(p.email) : ''}${payLabel(p)}${waiverMark(p.email)}</span></div>
           <span class="d2-tag ${p.source === 'Online' ? 'online' : ''}">${esc(p.source)}</span>
           <button class="d2-x" data-bid="${p.id}" title="Remove booking"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
         </div>`).join('') : '<p class="d2-empty">No bookings yet.</p>'}
@@ -270,10 +270,12 @@ function renderDetail() {
   el.querySelectorAll('.d2-x').forEach(b =>
     b.addEventListener('click', async () => {
       const p = people.find(x => x.id === b.dataset.bid);
-      const paidBooking = p && p.paid && !p.refunded;
+      const paidBooking = p && p.paid && !p.refunded && p.paidWith === 'card';
       if (!confirm(paidBooking
         ? `Remove this booking? ${gbp(p.amount)} will be refunded to their card automatically.`
-        : 'Remove this booking?')) return;
+        : p && p.paidWith === 'credit'
+          ? 'Remove this booking? The class credit goes back on their account automatically.'
+          : 'Remove this booking?')) return;
       try {
         if (paidBooking) {
           const { results } = await Store.refund([p.id]);
@@ -293,10 +295,12 @@ function renderDetail() {
   const cancelCls = $('detCancelClass');
   if (cancelCls) cancelCls.addEventListener('click', async () => {
     const n = people.length;
-    const paidPeople = people.filter(p => p.paid && !p.refunded);
+    const paidPeople = people.filter(p => p.paid && !p.refunded && p.paidWith === 'card');
+    const creditPeople = people.filter(p => p.paidWith === 'credit');
     const msg = n
       ? `Cancel this class?\n\n${n} booking${n === 1 ? '' : 's'} will be cancelled and the class will come off the public timetable.`
-        + (paidPeople.length ? `\n${paidPeople.length} paid booking${paidPeople.length === 1 ? '' : 's'} will be refunded to their card automatically.` : '')
+        + (paidPeople.length ? `\n${paidPeople.length} card booking${paidPeople.length === 1 ? '' : 's'} will be refunded automatically.` : '')
+        + (creditPeople.length ? `\n${creditPeople.length} credit booking${creditPeople.length === 1 ? '' : 's'} will have the credit returned automatically.` : '')
         + `\nContact those members yourself:\n\n`
         + people.map(p => `${p.name} · ${p.phone}`).join('\n')
       : 'Cancel this class? It will come off the public timetable.';
@@ -440,7 +444,7 @@ function renderBookings() {
       <td class="ct">${esc(b.phone || '')}${b.email ? '<br>' + esc(b.email) : ''}${waiverMark(b.email)}</td>
       <td>${esc(b.cls.t.name)}</td>
       <td class="ct">${fmtDay.format(b.cls.date)} ${fmtDate.format(b.cls.date)} · ${b.cls.time}</td>
-      <td><span class="d2-tag ${(b.source || 'Online') === 'Online' ? 'online' : ''}">${esc(b.source || 'Online')}</span>${b.paid ? `<br><span class="d2-tag" style="margin-top:5px">Paid ${gbp(b.amount)}</span>` : ''}</td>
+      <td><span class="d2-tag ${(b.source || 'Online') === 'Online' ? 'online' : ''}">${esc(b.source || 'Online')}</span>${b.paidWith === 'credit' ? '<br><span class="d2-tag" style="margin-top:5px">Credit</span>' : b.paid ? `<br><span class="d2-tag" style="margin-top:5px">Paid ${gbp(b.amount)}</span>` : ''}</td>
       <td class="rm"><button class="d2-x" data-id="${b.classId}" data-bid="${b.id}" title="Remove booking"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M5 5l14 14M19 5L5 19"/></svg></button></td>
     </tr>`).join('');
   $('bkEmpty').hidden = rows.length > 0;
@@ -450,10 +454,12 @@ function renderBookings() {
   $('bkTable').querySelectorAll('.d2-x').forEach(b =>
     b.addEventListener('click', async () => {
       const bk = rows.find(x => x.id === b.dataset.bid);
-      const paidBooking = bk && bk.paid && !bk.refunded;
+      const paidBooking = bk && bk.paid && !bk.refunded && bk.paidWith === 'card';
       if (!confirm(paidBooking
         ? `Remove this booking? ${gbp(bk.amount)} will be refunded to their card automatically.`
-        : 'Remove this booking?')) return;
+        : bk && bk.paidWith === 'credit'
+          ? 'Remove this booking? The class credit goes back on their account automatically.'
+          : 'Remove this booking?')) return;
       try {
         if (paidBooking) {
           const { results } = await Store.refund([bk.id]);
@@ -480,6 +486,11 @@ let waiverEmails = new Set();
 async function loadWaivers() {
   const rows = await ppApi('waivers?select=email');
   waiverEmails = new Set(rows.map(r => r.email));
+}
+function payLabel(p) {
+  if (p.paidWith === 'credit') return ' · Credit';
+  if (p.paid) return ' · Paid ' + gbp(p.amount);
+  return '';
 }
 function waiverMark(email) {
   if (!email) return '';
@@ -645,6 +656,15 @@ async function loadReportRange() {
   } catch {}
 }
 
+// credit packs bought in the last N days (card sales, staff-granted packs excluded)
+async function packSales(days) {
+  try {
+    const from = addDays(startOfToday(), 1 - days).toISOString();
+    const rows = await ppApi(`credit_packs?purchased_at=gte.${encodeURIComponent(from)}&stripe_session_id=not.is.null&select=amount_pence`);
+    return { n: rows.length, pence: rows.reduce((n, r) => n + (r.amount_pence || 0), 0) };
+  } catch { return { n: 0, pence: 0 }; }
+}
+
 function reportOccurrences() {
   const now = new Date();
   const upcoming = rptDays < 0;
@@ -664,7 +684,7 @@ function reportOccurrences() {
 }
 
 function classMoney(c) {
-  const paid = Store.attendees(c.id).filter(p => p.paid && !p.refunded);
+  const paid = Store.attendees(c.id).filter(p => p.paid && !p.refunded && p.paidWith === 'card');
   const revenue = paid.reduce((n, p) => n + (p.amount || 0), 0);
   const cost = c.cancelled ? 0 : (Instructors.byName(c.instructor)?.rate ?? DEFAULT_RATE);
   return { revenue, cost, profit: revenue - cost };
@@ -682,12 +702,15 @@ async function renderReports() {
   const money = occ.map(classMoney);
   const revenue = money.reduce((n, m) => n + m.revenue, 0);
   const cost = money.reduce((n, m) => n + m.cost, 0);
+  const packs = upcoming ? { n: 0, pence: 0 } : await packSales(rptDays);
+  const creditBeds = occ.reduce((n, c) => n + Store.attendees(c.id).filter(p => p.paidWith === 'credit').length, 0);
 
   $('rptStats').innerHTML = [
     { n: occ.length, l: upcoming ? 'Classes scheduled' : 'Classes run' },
     { n: `${booked}/${beds}`, l: 'Beds filled', bar: fill },
     { n: fill + '%', l: 'Occupancy' },
-    { n: gbp(revenue), l: 'Online revenue' },
+    { n: gbp(revenue), l: `Card revenue · ${creditBeds} bed${creditBeds === 1 ? '' : 's'} on credits` },
+    { n: gbp(packs.pence), l: `Pack sales · ${packs.n} pack${packs.n === 1 ? '' : 's'}` },
     { n: (revenue - cost < 0 ? '−' : '') + gbp(Math.abs(revenue - cost)), l: `Profit after £${cost / 100} instructor cost`, warn: revenue - cost < 0 },
   ].map(k => `
     <div class="d2-stat ${k.warn ? 'warn' : ''}">
@@ -810,6 +833,9 @@ function renderSettings() {
   f.rMin.value = RULES.minRiders;
   f.rCutoff.value = RULES.cutoffHours;
   f.rWindow.value = RULES.windowDays;
+  f.rPackCredits.value = RULES.packCredits;
+  f.rPackPrice.value = RULES.packPrice / 100;
+  f.rPackMonths.value = RULES.packMonths;
   $('pwEmail').textContent = Auth.email() || '';
   $('newType').hidden = !isAdmin();
   renderInstructors();
@@ -904,7 +930,12 @@ $('rulesForm').addEventListener('submit', async e => {
   const min = +f.rMin.value, max = +f.rMax.value;
   if (min > max) { alert('Minimum to run cannot be higher than beds per class.'); return; }
   try {
-    await Settings.saveRules({ maxRiders: max, minRiders: min, cutoffHours: +f.rCutoff.value, windowDays: +f.rWindow.value });
+    const packPrice = Math.round(parseFloat(f.rPackPrice.value) * 100);
+    if (!isFinite(packPrice) || packPrice < 100 || packPrice > 100000) { alert('Enter a pack price between £1 and £1000.'); return; }
+    await Settings.saveRules({
+      maxRiders: max, minRiders: min, cutoffHours: +f.rCutoff.value, windowDays: +f.rWindow.value,
+      packCredits: +f.rPackCredits.value, packPrice, packMonths: +f.rPackMonths.value,
+    });
     $('rulesSaved').hidden = false;
     setTimeout(() => { $('rulesSaved').hidden = true; }, 2000);
   } catch { alert('Could not save the rules. Please try again.'); }
@@ -1168,7 +1199,9 @@ const startPage = new URLSearchParams(location.search).get('page');
 ppReady
   .then(async () => {
     if (!await Auth.ensure()) { location.replace('../login/'); throw new Error('signed_out'); }
-    await Promise.all([Instructors.load().catch(() => {}), loadStaffRole()]);
+    await loadRole();
+    if (!Auth.isStaff()) { location.replace('../account/'); throw new Error('signed_out'); }
+    await Instructors.load().catch(() => {});
     applyRole();
     await Store.loadBookings();
     await loadWaivers();

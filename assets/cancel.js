@@ -53,9 +53,11 @@
 
   el('cnDate').textContent = when;
   el('cnDesc').textContent = `Hi ${s.name}. This cancels your bed in ${s.class_name} on ${fmtDay(s.date)} at ${s.time}.`;
-  el('cnNote').textContent = s.paid && s.amount_pence
-    ? `Your ${money(s.amount_pence)} payment will be refunded to your card. Refunds usually appear within 5 to 10 working days.`
-    : '';
+  el('cnNote').textContent = s.credit
+    ? 'This class was booked with a credit. The credit goes straight back on your account.'
+    : s.paid && s.amount_pence
+      ? `Your ${money(s.amount_pence)} payment will be refunded to your card. Refunds usually appear within 5 to 10 working days.`
+      : '';
   show('cnCard');
 
   el('cnConfirm').addEventListener('click', async () => {
@@ -67,6 +69,8 @@
       el('cnDoneDate').textContent = when;
       if (r.refunded && s.amount_pence) {
         el('cnDoneDesc').textContent = `Your bed has been freed up and ${money(s.amount_pence)} is on its way back to your card. Refunds usually appear within 5 to 10 working days.`;
+      } else if (r.credit_returned) {
+        el('cnDoneDesc').textContent = 'Your bed has been freed up and the credit is back on your account, ready for another class.';
       }
       show('cnDone');
     } catch (err) {
