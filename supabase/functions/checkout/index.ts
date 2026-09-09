@@ -151,8 +151,20 @@ Deno.serve(async (req) => {
     if (!STRIPE_KEY) return json({ error: "payments_not_configured" }, 503);
 
     const email = String(guest ? b.email : user.email || "").trim().toLowerCase().slice(0, 120);
-    const profiles = guest ? [] : await db(`profiles?user_id=eq.${user.id}&select=full_name,phone`);
+    const profiles = guest ? [] : await db(`profiles?user_id=eq.${user.id}&select=full_name,phone,phone_verified_at`);
     const profile = profiles[0] || {};
+
+    // This function writes with the service role, so the member checks in
+    // enforce_booking_rules do not fire for it. The unverified-mobile gate
+    // has to be repeated here, or a card payment would slip past it and the
+    // webhook would create the bed anyway. Packs are gated too: better to
+    // stop someone before they pay than to refund them afterwards.
+    if (!guest) {
+      const gate = await db("settings?id=eq.1&select=require_phone_verification");
+      if (gate[0]?.require_phone_verification && !profile.phone_verified_at) {
+        return json({ error: "phone_unverified" }, 409);
+      }
+    }
     const name = String(b.name || profile.full_name || "").trim().slice(0, 80) || email.split("@")[0];
     const phone = String(b.phone || profile.phone || "").trim().slice(0, 30);
     if (!email) return json({ error: "missing_details" }, 400);
