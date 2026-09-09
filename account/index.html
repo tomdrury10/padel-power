@@ -205,7 +205,32 @@
           <div class="ac-card-head"><span class="k">Your details</span></div>
           <form class="cform" id="acProfile">
             <div><label for="pfName">Name</label><input id="pfName" name="pfName" type="text" required maxlength="80" autocomplete="name"></div>
-            <div><label for="pfPhone">Mobile (for class texts)</label><input id="pfPhone" name="pfPhone" type="tel" inputmode="tel" required maxlength="25" autocomplete="tel" placeholder="+44 7123 456789"></div>
+            <div><label for="pfPhone">Mobile (for class texts)</label>
+              <div class="phone-row">
+                <select id="pfCode" name="pfCode" aria-label="Country code" required>
+                  <option value="+44">UK +44</option>
+                  <option value="+353">IE +353</option>
+                  <option value="+1">US/CA +1</option>
+                  <option value="+33">FR +33</option>
+                  <option value="+34">ES +34</option>
+                  <option value="+39">IT +39</option>
+                  <option value="+49">DE +49</option>
+                  <option value="+31">NL +31</option>
+                  <option value="+351">PT +351</option>
+                  <option value="+48">PL +48</option>
+                  <option value="+40">RO +40</option>
+                  <option value="+46">SE +46</option>
+                  <option value="+61">AU +61</option>
+                  <option value="+64">NZ +64</option>
+                  <option value="+27">ZA +27</option>
+                  <option value="+91">IN +91</option>
+                  <option value="+92">PK +92</option>
+                  <option value="+971">AE +971</option>
+                </select>
+                <input id="pfPhone" name="pfPhone" type="tel" inputmode="tel" required maxlength="20" autocomplete="tel-national" placeholder="7123 456789">
+              </div>
+              <p class="ac-fine">Changing this means verifying the new number before your next booking.</p>
+            </div>
             <div class="ac-row">
               <button class="btn btn-ghost" type="submit">Save details</button>
               <span class="ac-saved" id="pfSaved" hidden>Saved</span>
@@ -251,8 +276,8 @@
 </footer>
 
 <script src="../assets/site.js?v=4"></script>
-<script src="../assets/pilates-core.js?v=21"></script>
+<script src="../assets/pilates-core.js?v=22"></script>
 <script src="../assets/phone-verify.js?v=1"></script>
-<script src="../assets/account.js?v=2"></script>
+<script src="../assets/account.js?v=3"></script>
 </body>
 </html>

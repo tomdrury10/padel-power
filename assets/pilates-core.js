@@ -532,6 +532,19 @@ const Member = {
   },
 };
 
+/* ---------- phone numbers ----------
+   Stored readable with the country code on the front ("+44 7786 479635"),
+   which is what every webhook and ClickSend expect once the spaces come
+   out. Longest codes first, so +353 is not mistaken for +33. */
+const PP_DIAL_CODES = ['+971', '+353', '+351', '+92', '+91', '+64', '+61', '+49', '+48', '+46',
+                       '+44', '+40', '+39', '+34', '+33', '+31', '+27', '+1'];
+function splitDial(stored) {
+  const s = String(stored || '').trim();
+  const code = PP_DIAL_CODES.find(c => s.startsWith(c));
+  return code ? [code, s.slice(code.length).trim()] : ['+44', s.replace(/^0+/, '')];
+}
+const joinDial = (code, national) => `${code} ${String(national).trim().replace(/^0+/, '')}`;
+
 const gbp = pence => '£' + (pence % 100 === 0 ? pence / 100 : (pence / 100).toFixed(2));
 
 /* ---------- health questionnaire and waiver ---------- */

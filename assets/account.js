@@ -293,13 +293,18 @@
   function renderDetails() {
     const f = $('acProfile');
     f.pfName.value = Member.profile?.name || '';
-    f.pfPhone.value = Member.profile?.phone || '';
+    const [dial, national] = splitDial(Member.profile?.phone || '');
+    f.pfCode.value = dial;
+    f.pfPhone.value = national;
     f.addEventListener('submit', async e => {
       e.preventDefault();
       const btn = f.querySelector('button[type=submit]');
       btn.disabled = true;
       try {
-        await Member.saveProfile({ name: f.pfName.value.trim(), phone: f.pfPhone.value.trim() });
+        await Member.saveProfile({
+          name: f.pfName.value.trim(),
+          phone: joinDial(f.pfCode.value, f.pfPhone.value),
+        });
         $('pfSaved').hidden = false; setTimeout(() => { $('pfSaved').hidden = true; }, 2500);
         const first = f.pfName.value.trim().split(' ')[0];
         if (first) $('acTitle').innerHTML = `Hi<br><span class="blue">${esc(first)}</span>`;
