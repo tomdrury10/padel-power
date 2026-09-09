@@ -13,10 +13,10 @@ const SB_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const STRIPE_KEY = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
 
-// TRANSITION FLAG: the old booking page (no accounts) is still live until the
-// accounts site is pushed. While true, a guest can still pay for a single
-// class with name/email/phone. Set to false (and redeploy) at push time.
-const ALLOW_GUEST_CHECKOUT = true;
+// Accounts are live: every booking belongs to a member. Guest checkout was
+// kept on during the transition so the old booking page never broke; it is
+// off now and there is no path to a bed without an account.
+const ALLOW_GUEST_CHECKOUT = false;
 
 // www.padelpower.uk is the canonical domain; legacy hosts are not accepted
 const ALLOWED_ORIGINS = [
@@ -24,10 +24,6 @@ const ALLOWED_ORIGINS = [
   "https://padelpower.uk",
   "http://localhost:4173",
   "http://localhost:8123",
-  // PREVIEW ONLY: the pilates-member-accounts branch preview, so the full
-  // pay-by-card and buy-a-pack flow can be tried before go-live.
-  // Remove this line when the branch merges.
-  "https://padel-power-demo-git-pilates-member-accounts-juno-northampton.vercel.app",
 ];
 
 const CORS: Record<string, string> = {
