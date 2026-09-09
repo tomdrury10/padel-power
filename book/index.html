@@ -22,7 +22,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="icon" type="image/png" href="../assets/favicon.png">
 <link rel="apple-touch-icon" href="../assets/favicon.png">
-<link rel="stylesheet" href="../assets/styles.css?v=35">
+<link rel="stylesheet" href="../assets/styles.css?v=39">
 </head>
 <body>
 
@@ -108,12 +108,19 @@
         </div>
         <div class="ev-beds" id="evBeds" aria-hidden="true"></div>
         <div class="ev-beds-key"><span><i class="taken"></i> Taken</span><span><i></i> Free</span></div>
-        <form class="cform" id="evForm">
-          <div><label for="evName">Name</label><input id="evName" name="evName" type="text" placeholder="Your name" required></div>
-          <div><label for="evEmail">Email</label><input id="evEmail" name="evEmail" type="email" placeholder="you@email.com" required></div>
-          <div><label for="evPhone">Mobile</label>
-            <div class="phone-row">
-              <select id="evCode" name="evCode" aria-label="Country code" required>
+        <!-- not signed in: create an account or sign in, right here -->
+        <div class="ev-auth" id="evAuth" hidden>
+          <div class="ev-tabs" role="tablist">
+            <button type="button" class="ev-tab on" data-tab="up">Create account</button>
+            <button type="button" class="ev-tab" data-tab="in">Sign in</button>
+          </div>
+          <form class="cform" id="evSignUp">
+            <p class="ev-authnote">One quick account keeps your bookings, credits and health form in one place.</p>
+            <div><label for="suName">Name</label><input id="suName" name="suName" type="text" placeholder="Your name" autocomplete="name" required maxlength="80"></div>
+            <div><label for="suEmail">Email</label><input id="suEmail" name="suEmail" type="email" placeholder="you@email.com" autocomplete="email" required></div>
+            <div><label for="suPhone">Mobile</label>
+              <div class="phone-row">
+                <select id="suCode" name="suCode" aria-label="Country code" required>
                 <option value="+44" selected>UK +44</option>
                 <option value="+353">IE +353</option>
                 <option value="+1">US/CA +1</option>
@@ -132,21 +139,41 @@
                 <option value="+91">IN +91</option>
                 <option value="+92">PK +92</option>
                 <option value="+971">AE +971</option>
-              </select>
-              <input id="evPhone" name="evPhone" type="tel" inputmode="tel" placeholder="7123 456789" required>
+                </select>
+                <input id="suPhone" name="suPhone" type="tel" inputmode="tel" placeholder="7123 456789" autocomplete="tel-national" required>
+              </div>
             </div>
-          </div>
-          <div style="position:absolute;left:-9999px;top:-9999px" aria-hidden="true"><label for="evWebsite">Website</label><input id="evWebsite" name="evWebsite" type="text" tabindex="-1" autocomplete="off"></div>
-          <div><button class="btn btn-blue" type="submit" style="width:100%;justify-content:center">Confirm booking <span class="arr">→</span></button></div>
-        </form>
+            <div><label for="suPass">Choose a password</label><input id="suPass" name="suPass" type="password" placeholder="At least 8 characters" autocomplete="new-password" minlength="8" required></div>
+            <div style="position:absolute;left:-9999px;top:-9999px" aria-hidden="true"><label for="suWebsite">Website</label><input id="suWebsite" name="suWebsite" type="text" tabindex="-1" autocomplete="off"></div>
+            <div class="lg-error" id="suError" hidden></div>
+            <div><button class="btn btn-blue" type="submit" style="width:100%;justify-content:center">Create account and book <span class="arr">→</span></button></div>
+          </form>
+          <form class="cform" id="evSignIn" hidden>
+            <div><label for="siEmail">Email</label><input id="siEmail" name="siEmail" type="email" placeholder="you@email.com" autocomplete="username" required></div>
+            <div><label for="siPass">Password</label><input id="siPass" name="siPass" type="password" placeholder="Your password" autocomplete="current-password" required></div>
+            <div class="lg-error" id="siError" hidden></div>
+            <div><button class="btn btn-blue" type="submit" style="width:100%;justify-content:center">Sign in and book <span class="arr">→</span></button></div>
+            <a class="ev-forgot" href="../account/?reset=1">Forgotten your password?</a>
+          </form>
+        </div>
+
+        <!-- signed in: pick how to pay -->
+        <div class="ev-book" id="evBook" hidden>
+          <p class="ev-who" id="evWho"></p>
+          <div class="ev-actions" id="evActions"></div>
+          <a class="ev-forgot" href="../account/">Not you? Manage your account</a>
+        </div>
         <p class="ev-small">Cancel up to 24 hours before class.</p>
 
         <div class="bm-done" id="evDone" style="display:none">
           <div class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M4 12.5l5 5L20 6.5"/></svg></div>
           <h3>You're booked in</h3>
           <div class="bm-meta" id="evDoneMeta"></div>
-          <p style="color:var(--paper-dim);font-size:14px;margin-bottom:22px">Your booking is confirmed.</p>
-          <a class="btn btn-ghost" href="../pilates/#book">Back to timetable</a>
+          <p style="color:var(--paper-dim);font-size:14px;margin-bottom:22px" id="evDoneNote">Your booking is confirmed.</p>
+          <div class="ctas" style="justify-content:center">
+            <a class="btn btn-blue" href="../account/">My account</a>
+            <a class="btn btn-ghost" href="../pilates/#book">Back to timetable</a>
+          </div>
         </div>
       </aside>
     </div>
@@ -162,7 +189,7 @@
 <div class="wv-overlay" id="wvOverlay" hidden>
   <div class="wv-panel" role="dialog" aria-modal="true" aria-labelledby="wvTitle">
     <h2 id="wvTitle">Health questionnaire <span class="blue">and waiver</span></h2>
-    <p class="wv-sub">Your first booking with the studio comes with a short health questionnaire. It takes two minutes and we only ask once. Date: <b id="wvDate"></b></p>
+    <p class="wv-sub">Your first booking with the studio comes with a short health questionnaire. It takes two minutes, we only ask once, and it is saved to your account. Date: <b id="wvDate"></b></p>
     <form class="cform" id="wvForm">
       <div><label for="wvName">Full name</label><input id="wvName" name="wvName" type="text" required maxlength="80"></div>
       <div><label for="wvEmergency">Emergency contact name and number</label><input id="wvEmergency" name="wvEmergency" type="text" required maxlength="120" placeholder="e.g. Sam Smith, 07123 456789"></div>
@@ -237,7 +264,8 @@
 <div class="mobile-cta"><a class="btn btn-blue" href="#evCard">Reserve your bed <span class="arr">→</span></a></div>
 
 <script src="../assets/site.js?v=4"></script>
-<script src="../assets/pilates-core.js?v=19"></script>
-<script src="../assets/book.js?v=16"></script>
+<script src="../assets/pilates-core.js?v=22"></script>
+<script src="../assets/phone-verify.js?v=1"></script>
+<script src="../assets/book.js?v=19"></script>
 </body>
 </html>

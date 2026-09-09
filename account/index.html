@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-Z9MLZFVD2W"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-Z9MLZFVD2W');
+</script>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Account | Reformer Pilates | Padel Power Northampton</title>
+<meta name="description" content="Your Padel Power Pilates account: upcoming classes, class credits and booking history.">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0b0c0e">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="../assets/favicon.png">
+<link rel="apple-touch-icon" href="../assets/favicon.png">
+<link rel="stylesheet" href="../assets/styles.css?v=39">
+</head>
+<body>
+
+<header>
+  <div class="bar">
+    <a class="logo" href="../" aria-label="Padel Power home">
+      <img src="../assets/logo.png" alt="Padel Power - Padel, Fitness, Social Club">
+    </a>
+    <nav class="links" aria-label="Main">
+      <a href="../about/">The Club</a>
+      <a href="../coaching/">Coaching</a>
+      <a href="../northampton-padel-league/">Leagues</a>
+      <a href="../pilates/">Pilates</a>
+      <a href="../membership/">Membership</a>
+      <a href="../loyalty-app/">Loyalty App</a>
+      <a href="../news/">News</a>
+      <a href="../contact/">Contact</a>
+    </nav>
+    <div class="nav-cta">
+      <a class="btn btn-ghost" href="https://chat.whatsapp.com/KEyJqJcipeHHG0trIrVXdI" target="_blank" rel="noopener">Join the WhatsApp</a>
+      <a class="btn btn-blue" href="../pilates/#book">Book a class <span class="arr">→</span></a>
+      <button class="burger" id="burger" aria-label="Open menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18M3 12h18M3 17h18"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<div class="mobile-menu" id="mmenu">
+  <button class="close" id="mclose" aria-label="Close menu">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 5l14 14M19 5L5 19"/></svg>
+  </button>
+  <a class="mlink" href="../about/">The Club</a>
+  <a class="mlink" href="../coaching/">Coaching</a>
+  <a class="mlink" href="../northampton-padel-league/">Leagues</a>
+  <a class="mlink" href="../pilates/">Pilates</a>
+  <a class="mlink" href="../membership/">Membership</a>
+  <a class="mlink" href="../loyalty-app/">Loyalty App</a>
+  <a class="mlink" href="../news/">News</a>
+  <a class="mlink" href="../faq/">FAQ</a>
+  <a class="mlink" href="../contact/">Contact</a>
+  <a class="mlink blue" href="../pilates/#book">Book a Class →</a>
+</div>
+
+<section class="event">
+  <div class="ev-bg"><img src="../assets/pp-sign-wood.jpg" alt=""></div>
+  <div class="wrap">
+    <a class="ev-back" href="../pilates/#book"><span>←</span> All classes</a>
+
+    <!-- loading -->
+    <div class="ev-missing" id="acLoading">
+      <h1 class="h-giant">One<br><span class="blue">moment</span></h1>
+      <p class="lede">Opening your account.</p>
+    </div>
+
+    <!-- signed out: sign in / create account / reset -->
+    <div class="ac-authwrap" id="acAuth" hidden>
+      <div class="ac-intro">
+        <span class="eyebrow">Reformer Pilates</span>
+        <h1 class="h-giant">Your<br><span class="blue">account</span></h1>
+        <p class="lede">Book classes, keep track of your credits and see everything you have coming up. One account, every class.</p>
+      </div>
+      <aside class="ev-card">
+        <div class="ev-tabs" role="tablist">
+          <button type="button" class="ev-tab on" data-tab="in">Sign in</button>
+          <button type="button" class="ev-tab" data-tab="up">Create account</button>
+        </div>
+
+        <form class="cform" id="acSignIn">
+          <div><label for="siEmail">Email</label><input id="siEmail" name="siEmail" type="email" placeholder="you@email.com" autocomplete="username" required></div>
+          <div><label for="siPass">Password</label><input id="siPass" name="siPass" type="password" placeholder="Your password" autocomplete="current-password" required></div>
+          <div class="lg-error" id="siError" hidden></div>
+          <div><button class="btn btn-blue" type="submit" style="width:100%;justify-content:center">Sign in <span class="arr">→</span></button></div>
+          <button type="button" class="ev-forgot" id="acForgotLink">Forgotten your password?</button>
+        </form>
+
+        <form class="cform" id="acSignUp" hidden>
+          <p class="ev-authnote">One quick account keeps your bookings, credits and health form in one place.</p>
+          <div><label for="suName">Name</label><input id="suName" name="suName" type="text" placeholder="Your name" autocomplete="name" required maxlength="80"></div>
+          <div><label for="suEmail">Email</label><input id="suEmail" name="suEmail" type="email" placeholder="you@email.com" autocomplete="email" required></div>
+          <div><label for="suPhone">Mobile</label>
+            <div class="phone-row">
+              <select id="suCode" name="suCode" aria-label="Country code" required>
+                <option value="+44" selected>UK +44</option>
+                <option value="+353">IE +353</option>
+                <option value="+1">US/CA +1</option>
+                <option value="+33">FR +33</option>
+                <option value="+34">ES +34</option>
+                <option value="+39">IT +39</option>
+                <option value="+49">DE +49</option>
+                <option value="+31">NL +31</option>
+                <option value="+351">PT +351</option>
+                <option value="+48">PL +48</option>
+                <option value="+40">RO +40</option>
+                <option value="+46">SE +46</option>
+                <option value="+61">AU +61</option>
+                <option value="+64">NZ +64</option>
+                <option value="+27">ZA +27</option>
+                <option value="+91">IN +91</option>
+                <option value="+92">PK +92</option>
+                <option value="+971">AE +971</option>
+              </select>
+              <input id="suPhone" name="suPhone" type="tel" inputmode="tel" placeholder="7123 456789" autocomplete="tel-national" required>
+            </div>
+          </div>
+          <div><label for="suPass">Choose a password</label><input id="suPass" name="suPass" type="password" placeholder="At least 8 characters" autocomplete="new-password" minlength="8" required></div>
+          <div style="position:absolute;left:-9999px;top:-9999px" aria-hidden="true"><label for="suWebsite">Website</label><input id="suWebsite" name="suWebsite" type="text" tabindex="-1" autocomplete="off"></div>
+          <div class="lg-error" id="suError" hidden></div>
+          <div><button class="btn btn-blue" type="submit" style="width:100%;justify-content:center">Create account <span class="arr">→</span></button></div>
+        </form>
+
+        <form class="cform" id="acReset" hidden>
+          <p class="ev-authnote">Enter your email and we will send you a link to choose a new password.</p>
+          <div><label for="rsEmail">Email</label><input id="rsEmail" name="rsEmail" type="email" placeholder="you@email.com" autocomplete="username" required></div>
+          <div class="lg-error" id="rsError" hidden></div>
+          <div><button class="btn btn-blue" type="submit" style="width:100%;justify-content:center">Send reset link <span class="arr">→</span></button></div>
+          <button type="button" class="ev-forgot" data-tab="in">Back to sign in</button>
+        </form>
+
+        <div class="ev-confirm" id="acNotice" hidden></div>
+      </aside>
+    </div>
+
+    <!-- arrived from a password reset email -->
+    <div class="ac-authwrap" id="acRecover" hidden>
+      <div class="ac-intro">
+        <span class="eyebrow">Password reset</span>
+        <h1 class="h-giant">Choose a<br><span class="blue">new password</span></h1>
+        <p class="lede">Pick something you will remember. You will stay signed in on this device.</p>
+      </div>
+      <aside class="ev-card">
+        <form class="cform" id="acNewPass">
+          <div><label for="npPass">New password</label><input id="npPass" name="npPass" type="password" autocomplete="new-password" minlength="8" required></div>
+          <div><label for="npConfirm">Confirm new password</label><input id="npConfirm" name="npConfirm" type="password" autocomplete="new-password" minlength="8" required></div>
+          <div class="lg-error" id="npError" hidden></div>
+          <div><button class="btn btn-blue" type="submit" style="width:100%;justify-content:center">Save password <span class="arr">→</span></button></div>
+        </form>
+      </aside>
+    </div>
+
+    <!-- signed in -->
+    <div id="acHome" hidden>
+      <div class="ac-head">
+        <div>
+          <span class="eyebrow">My account</span>
+          <h1 class="h-giant" id="acTitle">Hi<br><span class="blue">there</span></h1>
+          <p class="lede" id="acEmail"></p>
+        </div>
+        <div class="ctas">
+          <a class="btn btn-blue" href="../pilates/#book">Book a class <span class="arr">→</span></a>
+          <button class="btn btn-ghost" id="acSignOut">Sign out</button>
+        </div>
+      </div>
+      <div class="ev-note" id="acStaffNote" hidden>You are signed in with a staff account. <a href="../admin/">Open the Studio Manager</a>.</div>
+      <div class="ev-note ok" id="acFlash" hidden></div>
+
+      <section class="ac-card ac-verify" id="acVerify" hidden>
+        <div class="ac-card-head"><span class="k">Verify your mobile</span></div>
+        <p class="ac-sub">Your booking confirmation and your cancellation link both arrive by text, so we need to know the number works. We send one code and that is it.</p>
+        <p class="ac-phone" id="acVerifyPhone"></p>
+        <button class="btn btn-blue" id="acVerifyBtn" style="justify-content:center">Send me a code <span class="arr">→</span></button>
+      </section>
+
+      <div class="ac-grid">
+        <section class="ac-card" id="packs">
+          <div class="ac-card-head"><span class="k">Class credits</span></div>
+          <div class="ac-big"><b id="acCredits">0</b><span id="acCreditsLabel">credits left</span></div>
+          <p class="ac-sub" id="acCreditsNote"></p>
+          <button class="btn btn-blue" id="acBuy" style="width:100%;justify-content:center"></button>
+          <p class="ac-fine" id="acPackFine"></p>
+          <div class="ac-list" id="acPacks"></div>
+        </section>
+
+        <section class="ac-card">
+          <div class="ac-card-head"><span class="k">Coming up</span><a class="ac-link" href="../pilates/#book">Book another →</a></div>
+          <div class="ac-list" id="acUpcoming"></div>
+        </section>
+
+        <section class="ac-card" id="details">
+          <div class="ac-card-head"><span class="k">Your details</span></div>
+          <form class="cform" id="acProfile">
+            <div><label for="pfName">Name</label><input id="pfName" name="pfName" type="text" required maxlength="80" autocomplete="name"></div>
+            <div><label for="pfPhone">Mobile (for class texts)</label>
+              <div class="phone-row">
+                <select id="pfCode" name="pfCode" aria-label="Country code" required>
+                  <option value="+44">UK +44</option>
+                  <option value="+353">IE +353</option>
+                  <option value="+1">US/CA +1</option>
+                  <option value="+33">FR +33</option>
+                  <option value="+34">ES +34</option>
+                  <option value="+39">IT +39</option>
+                  <option value="+49">DE +49</option>
+                  <option value="+31">NL +31</option>
+                  <option value="+351">PT +351</option>
+                  <option value="+48">PL +48</option>
+                  <option value="+40">RO +40</option>
+                  <option value="+46">SE +46</option>
+                  <option value="+61">AU +61</option>
+                  <option value="+64">NZ +64</option>
+                  <option value="+27">ZA +27</option>
+                  <option value="+91">IN +91</option>
+                  <option value="+92">PK +92</option>
+                  <option value="+971">AE +971</option>
+                </select>
+                <input id="pfPhone" name="pfPhone" type="tel" inputmode="tel" required maxlength="20" autocomplete="tel-national" placeholder="7123 456789">
+              </div>
+              <p class="ac-fine">Changing this means verifying the new number before your next booking.</p>
+            </div>
+            <div class="ac-row">
+              <button class="btn btn-ghost" type="submit">Save details</button>
+              <span class="ac-saved" id="pfSaved" hidden>Saved</span>
+            </div>
+          </form>
+          <div class="ac-waiver">
+            <div id="acPhoneTag"></div>
+          </div>
+          <div class="ac-waiver" id="acWaiver"></div>
+          <details class="ac-more">
+            <summary>Change password</summary>
+            <form class="cform" id="acPass" style="margin-top:14px">
+              <div><label for="cpNew">New password</label><input id="cpNew" name="cpNew" type="password" autocomplete="new-password" minlength="8" required></div>
+              <div><label for="cpConfirm">Confirm new password</label><input id="cpConfirm" name="cpConfirm" type="password" autocomplete="new-password" minlength="8" required></div>
+              <div class="ac-row">
+                <button class="btn btn-ghost" type="submit">Update password</button>
+                <span class="ac-saved" id="cpSaved" hidden>Updated</span>
+              </div>
+            </form>
+          </details>
+        </section>
+
+        <section class="ac-card">
+          <div class="ac-card-head"><span class="k">History</span></div>
+          <div class="ac-list" id="acPast"></div>
+        </section>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="foot-bottom">
+      <span>© 2026 Padel Power Northants Limited · Company no. 16445182</span>
+      <span>Unit 1 Kingsfield Business Park, NN5 7PP</span>
+      <span><a href="../privacy-policy/">Privacy Policy</a></span>
+      <span><a href="../booking-terms/">Booking Terms</a></span>
+      <span>Website built by <a href="https://getjuno.uk" target="_blank" rel="noopener">Juno</a></span>
+      <span><a href="../login/">Staff login</a></span>
+    </div>
+  </div>
+</footer>
+
+<script src="../assets/site.js?v=4"></script>
+<script src="../assets/pilates-core.js?v=22"></script>
+<script src="../assets/phone-verify.js?v=1"></script>
+<script src="../assets/account.js?v=3"></script>
+</body>
+</html>

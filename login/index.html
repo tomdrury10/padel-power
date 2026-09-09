@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Admin Login | Padel Power</title>
+<title>Staff Login | Padel Power</title>
 <meta name="robots" content="noindex">
 <meta name="theme-color" content="#0b0c0e">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="icon" type="image/png" href="../assets/favicon.png">
-<link rel="stylesheet" href="../assets/styles.css?v=35">
+<link rel="stylesheet" href="../assets/styles.css?v=39">
 </head>
 <body class="lg-body">
 
@@ -20,7 +20,8 @@
       <img src="../assets/logo.png" alt="Padel Power">
     </a>
     <span class="lg-eyebrow">Studio Manager</span>
-    <h1>Admin login</h1>
+    <h1>Staff login</h1>
+    <p class="lg-sub">Booking a class? <a href="../account/" style="color:var(--blue)">Go to your member account</a>.</p>
 
     <form id="lgForm">
       <label class="lg-label" for="lgEmail">Email</label>
@@ -34,7 +35,7 @@
   <a class="lg-back" href="../">← Back to the website</a>
 </main>
 
-<script src="../assets/pilates-core.js?v=19"></script>
+<script src="../assets/pilates-core.js?v=22"></script>
 <script>
 (() => {
   const next = new URLSearchParams(location.search).get('next') || '../admin/';
@@ -42,8 +43,12 @@
   const err = document.getElementById('lgError');
   const btn = document.getElementById('lgBtn');
 
-  // already signed in? go straight through
-  if (Auth.token()) location.replace(next);
+  // already signed in? send staff through, members to their account
+  async function route() {
+    const role = await loadRole();
+    location.replace(role === 'admin' || role === 'instructor' ? next : '../account/');
+  }
+  if (Auth.token()) route();
 
   form.addEventListener('submit', async e => {
     e.preventDefault();
@@ -52,7 +57,7 @@
     btn.textContent = 'Signing in...';
     try {
       await Auth.signIn(form.lgEmail.value.trim(), form.lgPass.value);
-      location.replace(next);
+      await route();
     } catch (ex) {
       err.textContent = /invalid/i.test(ex.message) ? 'That email and password combination was not recognised.' : ex.message;
       err.hidden = false;

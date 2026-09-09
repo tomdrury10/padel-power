@@ -12,11 +12,25 @@ const PP_URL = 'https://bejshhlkatpjcydlokfk.supabase.co';
 const PP_API = `${PP_URL}/rest/v1`;
 const PP_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJlanNoaGxrYXRwamN5ZGxva2ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcwNzYxOTYsImV4cCI6MjEwMjY1MjE5Nn0.EQghTZaE2bLdOb7w1Ashg4o493iNiieyfJdF1xmN2qQ';
 
-/* ---------- staff auth (Supabase Auth, email + password) ---------- */
+/* ---------- auth (Supabase Auth, email + password) ----------
+   One session store for everyone: staff (admin / instructor) and members.
+   What a session can DO is decided by the role row server-side (RLS);
+   PP_ROLE mirrors it for the UI once loadRole() has run. */
 const Auth = {
-  key: 'pp-staff-session',
-  session() { try { return JSON.parse(localStorage.getItem(this.key)); } catch { return null; } },
+  key: 'pp-session',
+  legacyKey: 'pp-staff-session',
+  session() {
+    try {
+      const s = JSON.parse(localStorage.getItem(this.key));
+      if (s) return s;
+      // staff signed in before accounts existed: carry the session over
+      const old = JSON.parse(localStorage.getItem(this.legacyKey));
+      if (old) { localStorage.setItem(this.key, JSON.stringify(old)); localStorage.removeItem(this.legacyKey); }
+      return old;
+    } catch { return null; }
+  },
   email() { return this.session()?.email || null; },
+  userId() { return this.session()?.user_id || null; },
   token() {
     const s = this.session();
     return s && s.expires_at > Date.now() / 1000 + 30 ? s.access_token : null;
@@ -27,8 +41,81 @@ const Auth = {
       refresh_token: data.refresh_token,
       expires_at: Math.floor(Date.now() / 1000) + (data.expires_in || 3600),
       email: data.user?.email || this.email(),
+      user_id: data.user?.id || this.userId(),
     }));
   },
+  // create a member account. Name and phone travel as signup metadata and
+  // become the profile row server-side. If email confirmation is on, no
+  // session comes back until they click the link: returns { confirm: true }.
+  async signUp(email, password, profile) {
+    const res = await fetch(`${PP_URL}/auth/v1/signup`, {
+      method: 'POST',
+      headers: { apikey: PP_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email, password,
+        data: { full_name: profile.name, phone: profile.phone },
+        options: { email_redirect_to: PP_SITE + '/account/' },
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error_description || data.msg || data.error || 'Sign up failed');
+    if (data.access_token) { this.save(data); return { confirm: false }; }
+    // a repeat signup for an existing address returns a fake user with no identities
+    if (Array.isArray(data.identities) && !data.identities.length) throw new Error('already_registered');
+    return { confirm: true };
+  },
+  async requestPasswordReset(email) {
+    const res = await fetch(`${PP_URL}/auth/v1/recover`, {
+      method: 'POST',
+      headers: { apikey: PP_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, options: { email_redirect_to: PP_SITE + '/account/' } }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error_description || data.msg || 'reset_failed');
+    }
+    return true;
+  },
+  // arriving from a recovery / confirmation email: the tokens are in the URL hash
+  adoptHashSession() {
+    const h = new URLSearchParams(location.hash.replace(/^#/, ''));
+    if (!h.get('access_token')) return null;
+    this.save({
+      access_token: h.get('access_token'),
+      refresh_token: h.get('refresh_token'),
+      expires_in: +h.get('expires_in') || 3600,
+      user: {},
+    });
+    history.replaceState(null, '', location.pathname + location.search);
+    return h.get('type') || 'session';
+  },
+  // set a new password with the current (recovery) session
+  async setPassword(next) {
+    const token = await this.ensure();
+    if (!token) throw new Error('signed_out');
+    const res = await fetch(`${PP_URL}/auth/v1/user`, {
+      method: 'PUT',
+      headers: { apikey: PP_KEY, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: next }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error_description || data.msg || 'update_failed');
+    }
+    return true;
+  },
+  // who the token belongs to (fills email / id after a hash session)
+  async loadUser() {
+    const token = await this.ensure();
+    if (!token) return null;
+    const res = await fetch(`${PP_URL}/auth/v1/user`, { headers: { apikey: PP_KEY, Authorization: `Bearer ${token}` } });
+    if (!res.ok) return null;
+    const u = await res.json();
+    const s = this.session();
+    if (s) { s.email = u.email; s.user_id = u.id; localStorage.setItem(this.key, JSON.stringify(s)); }
+    return u;
+  },
+  isStaff() { return PP_ROLE === 'admin' || PP_ROLE === 'instructor'; },
   async signIn(email, password) {
     const res = await fetch(`${PP_URL}/auth/v1/token?grant_type=password`, {
       method: 'POST',
@@ -77,16 +164,23 @@ const Auth = {
     }
     return true;
   },
-  signOut() { localStorage.removeItem(this.key); },
+  signOut() {
+    localStorage.removeItem(this.key);
+    localStorage.removeItem(this.legacyKey);
+    PP_ROLE = null;
+    Member.reset();
+  },
 };
 
+const PP_SITE = location.hostname === 'localhost' ? location.origin : 'https://www.padelpower.uk';
+
 async function ppApi(path, opts = {}) {
-  const staff = Auth.token();
+  const token = Auth.token();   // staff or member; RLS decides what it may see
   const res = await fetch(`${PP_API}/${path}`, {
     ...opts,
     headers: {
       apikey: PP_KEY,
-      Authorization: `Bearer ${staff || PP_KEY}`,
+      Authorization: `Bearer ${token || PP_KEY}`,
       'Content-Type': 'application/json',
       Prefer: 'return=representation',
       ...(opts.headers || {}),
@@ -103,12 +197,12 @@ async function ppApi(path, opts = {}) {
 
 // edge functions (Stripe checkout, refunds)
 async function ppFn(path, opts = {}) {
-  const staff = Auth.token();
+  const token = Auth.token();
   const res = await fetch(`${PP_URL}/functions/v1/${path}`, {
     ...opts,
     headers: {
       apikey: PP_KEY,
-      Authorization: `Bearer ${staff || PP_KEY}`,
+      Authorization: `Bearer ${token || PP_KEY}`,
       'Content-Type': 'application/json',
       ...(opts.headers || {}),
     },
@@ -125,6 +219,11 @@ const RULES = {
   minRiders: 3,
   maxRiders: 8,
   windowDays: 14,
+  packCredits: 6,
+  packPrice: 10000,     // pence
+  packMonths: 3,
+  requirePhone: false,  // master switch; off until ClickSend is wired up
+  codeMinutes: 10,
 };
 const CLASS_TYPES = {};   // key -> { name, level, desc, custom }
 const TIMETABLE = {};     // weekday -> [[time, typeKey], ...]
@@ -181,7 +280,7 @@ function classStart(classId) {
 }
 const withinCutoff = classId => (classStart(classId) - new Date()) < RULES.cutoffHours * 3600 * 1000;
 
-/* ---------- my bookings (this device, for the Booked tick) ---------- */
+/* ---------- my bookings (this device, fallback for the Booked tick) ---------- */
 const My = {
   key: 'pp-my-bookings',
   all() { try { return JSON.parse(localStorage.getItem(this.key)) || []; } catch { return []; } },
@@ -193,13 +292,14 @@ const My = {
 const Store = {
   count(classId) { return Math.min(RULES.maxRiders, cache.counts[classId] || 0); },
   attendees(classId) { return cache.bookings.filter(b => b.classId === classId); },
-  mine(classId) { return My.has(classId); },
+  mine(classId) { return Member.has(classId) || (!Auth.userId() && My.has(classId)); },
 
+  // free class: a signed-in member books directly (the server stamps the
+  // booking with their account), staff book on a member's behalf
   async book(classId, person) {
-    const staff = !!Auth.token();
+    const staff = Auth.isStaff();
     const rows = await ppApi('bookings', {
       method: 'POST',
-      // the public may write bookings but never read them back
       headers: staff ? {} : { Prefer: 'return=minimal' },
       body: JSON.stringify({
         class_id: classId,
@@ -207,29 +307,58 @@ const Store = {
         email: person.email || '',
         phone: person.phone,
         source: person.source || 'Online',
+        user_id: staff ? (person.userId || null) : Auth.userId(),
       }),
     });
     cache.counts[classId] = (cache.counts[classId] || 0) + 1;
     if (staff && rows?.[0]) cache.bookings.push(mapBooking(rows[0]));
-    if (!person.source || person.source === 'Online') My.add(classId);
+    if (!staff) { My.add(classId); await Member.load().catch(() => {}); }
     return { ok: true };
   },
 
-  // paid public booking: create a Stripe Checkout session and hand back its URL
-  async checkout(classId, person) {
+  // member: spend one class credit
+  async bookWithCredit(classId) {
+    const r = await ppApi('rpc/book_with_credit', { method: 'POST', body: JSON.stringify({ p_class_id: classId }) });
+    cache.counts[classId] = (cache.counts[classId] || 0) + 1;
+    await Member.load().catch(() => {});
+    return r;
+  },
+
+  // paid booking: create a Stripe Checkout session and hand back its URL.
+  // The account behind the token supplies the name, email and phone.
+  async checkout(classId) {
     return ppFn('checkout', {
       method: 'POST',
       body: JSON.stringify({
+        kind: 'class',
         class_id: classId,
-        name: person.name,
-        email: person.email,
-        phone: person.phone,
         return_url: location.origin + location.pathname + location.search,
       }),
     });
   },
+  async buyPack(returnUrl) {
+    return ppFn('checkout', {
+      method: 'POST',
+      body: JSON.stringify({ kind: 'pack', return_url: returnUrl || (location.origin + location.pathname) }),
+    });
+  },
   async checkoutStatus(sessionId) {
     return ppFn(`checkout?session=${encodeURIComponent(sessionId)}`);
+  },
+  // member: mobile verification by SMS code
+  phoneState() { return ppFn('verify-phone'); },
+  sendCode() { return ppFn('verify-phone', { method: 'POST', body: JSON.stringify({ action: 'send' }) }); },
+  async checkCode(code) {
+    const r = await ppFn('verify-phone', { method: 'POST', body: JSON.stringify({ action: 'check', code }) });
+    await Member.load().catch(() => {});
+    return r;
+  },
+
+  // member: cancel one of their own bookings (refund / credit handled server-side)
+  async cancelMine(bookingId) {
+    const r = await ppFn('cancel-booking', { method: 'POST', body: JSON.stringify({ booking_id: bookingId }) });
+    await Member.load().catch(() => {});
+    return r;
   },
   // staff: refund paid bookings via Stripe and soft-cancel them
   async refund(bookingIds) {
@@ -328,8 +457,93 @@ function mapBooking(r) {
     id: r.id, classId: r.class_id, name: r.name, email: r.email,
     phone: r.phone, source: r.source, at: Date.parse(r.created_at),
     amount: r.amount_pence || null, paid: !!r.paid_at, refunded: !!r.refunded_at,
+    userId: r.user_id || null,
+    paidWith: r.paid_with || (r.paid_at ? 'card' : null),   // 'card' | 'credit' | null
+    cancelledAt: r.cancelled_at ? Date.parse(r.cancelled_at) : null,
+    classType: r.class_type || null,
   };
 }
+
+/* ---------- member: profile, credits, own bookings ---------- */
+const Member = {
+  profile: null,     // { name, phone, verifiedAt }
+  packs: [],         // { id, total, left, expiresAt, purchasedAt, amount }
+  bookings: [],      // own bookings, mapped, newest first (incl. cancelled)
+  waiver: false,
+  loaded: false,
+  reset() { this.profile = null; this.packs = []; this.bookings = []; this.waiver = false; this.loaded = false; },
+  // true when the mobile is proved, or when the studio is not asking yet
+  phoneOk() { return !RULES.requirePhone || !!this.profile?.verifiedAt; },
+  needsPhone() { return RULES.requirePhone && !this.profile?.verifiedAt; },
+  credits() {
+    const now = Date.now();
+    return this.packs.filter(p => p.left > 0 && p.expiresAt > now).reduce((n, p) => n + p.left, 0);
+  },
+  nextExpiry() {
+    const now = Date.now();
+    const live = this.packs.filter(p => p.left > 0 && p.expiresAt > now).sort((a, b) => a.expiresAt - b.expiresAt);
+    return live[0]?.expiresAt || null;
+  },
+  has(classId) { return this.bookings.some(b => b.classId === classId && !b.cancelledAt); },
+  upcoming() {
+    const now = Date.now();
+    return this.bookings.filter(b => !b.cancelledAt && classStart(b.classId) >= now).sort((a, b) => classStart(a.classId) - classStart(b.classId));
+  },
+  past() {
+    const now = Date.now();
+    return this.bookings.filter(b => b.cancelledAt || classStart(b.classId) < now).sort((a, b) => classStart(b.classId) - classStart(a.classId));
+  },
+  async load() {
+    const uid = Auth.userId();
+    if (!uid) { this.reset(); return; }
+    const email = (Auth.email() || '').toLowerCase();
+    const [prof, packs, rows, waiver] = await Promise.all([
+      ppApi(`profiles?user_id=eq.${uid}&select=full_name,phone,phone_verified_at`),
+      ppApi(`credit_packs?user_id=eq.${uid}&select=*&order=expires_at.asc`),
+      ppApi(`bookings?user_id=eq.${uid}&select=*&order=created_at.desc&limit=200`),
+      email ? ppApi(`waivers?email=eq.${encodeURIComponent(email)}&select=signed_at`) : Promise.resolve([]),
+    ]);
+    this.profile = {
+      name: prof[0]?.full_name || '',
+      phone: prof[0]?.phone || '',
+      verifiedAt: prof[0]?.phone_verified_at ? Date.parse(prof[0].phone_verified_at) : null,
+    };
+    this.packs = packs.map(p => ({
+      id: p.id, total: p.credits_total, left: p.credits_left, amount: p.amount_pence,
+      expiresAt: Date.parse(p.expires_at), purchasedAt: Date.parse(p.purchased_at), note: p.note || '',
+    }));
+    this.bookings = rows.map(mapBooking);
+    this.waiver = waiver.length > 0;
+    this.loaded = true;
+  },
+  async saveProfile(fields) {
+    const uid = Auth.userId();
+    const body = { full_name: fields.name, phone: fields.phone };
+    const existing = await ppApi(`profiles?user_id=eq.${uid}&select=user_id`);
+    if (existing.length) {
+      await ppApi(`profiles?user_id=eq.${uid}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ ...body, updated_at: new Date().toISOString() }) });
+    } else {
+      await ppApi('profiles', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ user_id: uid, ...body }) });
+    }
+    // changing the number clears the verification server-side, so re-read
+    await this.load().catch(() => {
+      this.profile = { name: fields.name, phone: fields.phone, verifiedAt: null };
+    });
+  },
+};
+
+/* ---------- phone numbers ----------
+   Stored readable with the country code on the front ("+44 7786 479635"),
+   which is what every webhook and ClickSend expect once the spaces come
+   out. Longest codes first, so +353 is not mistaken for +33. */
+const PP_DIAL_CODES = ['+971', '+353', '+351', '+92', '+91', '+64', '+61', '+49', '+48', '+46',
+                       '+44', '+40', '+39', '+34', '+33', '+31', '+27', '+1'];
+function splitDial(stored) {
+  const s = String(stored || '').trim();
+  const code = PP_DIAL_CODES.find(c => s.startsWith(c));
+  return code ? [code, s.slice(code.length).trim()] : ['+44', s.replace(/^0+/, '')];
+}
+const joinDial = (code, national) => `${code} ${String(national).trim().replace(/^0+/, '')}`;
 
 const gbp = pence => '£' + (pence % 100 === 0 ? pence / 100 : (pence / 100).toFixed(2));
 
@@ -352,6 +566,8 @@ const Settings = {
       body: JSON.stringify({
         max_riders: rules.maxRiders, min_riders: rules.minRiders,
         cutoff_hours: rules.cutoffHours, window_days: rules.windowDays,
+        pack_credits: rules.packCredits, pack_price_pence: rules.packPrice, pack_expiry_months: rules.packMonths,
+        require_phone_verification: rules.requirePhone, verification_code_minutes: rules.codeMinutes,
       }),
     });
     Object.assign(RULES, rules);
@@ -423,8 +639,10 @@ const Settings = {
   },
 };
 
-/* ---------- staff: instructors + roles ---------- */
-let PP_ROLE = 'admin';   // default until the real role loads; RLS enforces server-side
+/* ---------- roles + instructors ---------- */
+// 'admin' | 'instructor' | 'member' | null (not signed in / not loaded yet).
+// The database enforces all of this; PP_ROLE only shapes the UI.
+let PP_ROLE = null;
 const INSTRUCTORS = [];  // { id, name, email, phone, rate, active }
 
 const Instructors = {
@@ -462,18 +680,25 @@ const Instructors = {
   },
 };
 
-// tables may not exist until the migration has run; everyone stays admin then
-async function loadStaffRole() {
+// a signed-in user with no staff_roles row is a member
+async function loadRole() {
+  if (!Auth.token()) { PP_ROLE = null; return PP_ROLE; }
   try {
     const rows = await ppApi('staff_roles?select=role');
-    if (rows[0]) PP_ROLE = rows[0].role;
-  } catch {}
+    PP_ROLE = rows[0]?.role || 'member';
+  } catch { PP_ROLE = 'member'; }
+  return PP_ROLE;
 }
+const loadStaffRole = loadRole;
 
 /* ---------- boot: load everything the pages need ---------- */
 async function ppInit() {
   const today = iso(new Date());
-  if (Auth.session()) await Auth.ensure();   // keep staff signed in across reloads
+  if (Auth.session()) {
+    await Auth.ensure();                       // keep anyone signed in across reloads
+    if (Auth.token() && !Auth.userId()) await Auth.loadUser().catch(() => {});
+    await loadRole();
+  }
   const [types, slots, custom, cancelled, settings, counts] = await Promise.all([
     ppApi('class_types?select=*'),
     ppApi('timetable?select=id,weekday,start_time,type_key,instructor'),
@@ -493,9 +718,15 @@ async function ppInit() {
       maxRiders: s.max_riders, minRiders: s.min_riders,
       cutoffHours: s.cutoff_hours, windowDays: s.window_days,
       openingDate: s.opening_date,
+      packCredits: s.pack_credits ?? RULES.packCredits,
+      packPrice: s.pack_price_pence ?? RULES.packPrice,
+      packMonths: s.pack_expiry_months ?? RULES.packMonths,
+      requirePhone: s.require_phone_verification ?? RULES.requirePhone,
+      codeMinutes: s.verification_code_minutes ?? RULES.codeMinutes,
     });
   }
   counts.forEach(r => { cache.counts[r.class_id] = r.booked; });
+  if (Auth.userId()) await Member.load().catch(() => {});
 }
 
 const ppReady = ppInit();

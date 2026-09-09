@@ -33,7 +33,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="icon" type="image/png" href="../assets/favicon.png">
 <link rel="apple-touch-icon" href="../assets/favicon.png">
-<link rel="stylesheet" href="../assets/styles.css?v=37">
+<link rel="stylesheet" href="../assets/styles.css?v=39">
 </head>
 <body>
 
@@ -98,6 +98,7 @@
       <h2 class="h-giant">Pick your <span class="outline">bed</span></h2>
     </div>
     <div class="rv">
+      <div class="pp-strip" id="memberStrip"></div>
       <div class="pdates" id="dateStrip"></div>
       <div class="pday-label" id="classDayLabel"></div>
       <div class="pclasses" id="classList"></div>
@@ -105,6 +106,28 @@
     </div>
   </div>
 </section>
+<section class="sec" id="packs">
+  <div class="wrap">
+    <div class="ppack rv">
+      <div>
+        <span class="eyebrow">Class packs</span>
+        <h2 class="h-giant">Pay for five,<br><span class="outline">get six</span></h2>
+        <p class="lede" id="packLede">Six reformer classes for £100, paid up front. Credits sit on your account for three months and book with one tap. Cancel a class 24 hours ahead and the credit comes straight back.</p>
+      </div>
+      <div class="ppack-card">
+        <div class="ppack-price"><b id="packPrice">£100</b><span id="packCount">6 classes</span></div>
+        <ul class="ppack-list">
+          <li>Any class, any instructor</li>
+          <li>Valid for <span id="packMonths">3 months</span></li>
+          <li>Credits return on 24h cancellation</li>
+        </ul>
+        <a class="btn btn-blue" href="../account/#packs" style="width:100%;justify-content:center">Get a pack <span class="arr">→</span></a>
+        <p class="ac-fine" style="text-align:center;margin-top:12px">Sign in or create an account to buy.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
 <section class="sec" id="instructors">
   <div class="wrap">
     <div class="sec-head rv">
@@ -256,7 +279,7 @@
 <div class="mobile-cta"><a class="btn btn-blue" href="#book">Book a class <span class="arr">→</span></a></div>
 
 <script src="../assets/site.js?v=4"></script>
-<script src="../assets/pilates-core.js?v=19"></script>
-<script src="../assets/pilates.js?v=11"></script>
+<script src="../assets/pilates-core.js?v=22"></script>
+<script src="../assets/pilates.js?v=12"></script>
 </body>
 </html>
