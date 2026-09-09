@@ -12,7 +12,7 @@
   const fmtWhen = d => new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }).format(d);
   const fmtLong = d => new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }).format(d);
   const show = id => {
-    ['acLoading', 'acAuth', 'acRecover', 'acHome'].forEach(x => { $(x).hidden = x !== id; });
+    ['acLoading', 'acAuth', 'acRecover', 'acTokenReset', 'acHome'].forEach(x => { $(x).hidden = x !== id; });
   };
 
   // tokens in the hash: confirmation, magic link or password recovery
@@ -25,6 +25,7 @@
   }
 
   if (arrived === 'recovery') return renderRecover();
+  if (q.get('reset_token')) return renderTokenReset(q.get('reset_token'));
   if (Auth.userId()) return renderHome();
   renderAuth();
 
@@ -84,14 +85,29 @@
       }
     });
 
+    // text or email. Text is the default because it goes to a number we
+    // have already proved, and it does not depend on an inbox.
+    const hint = $('rsHint');
+    panes.reset.querySelectorAll('input[name=rsHow]').forEach(r =>
+      r.addEventListener('change', () => {
+        hint.textContent = r.value === 'text'
+          ? 'Goes to the mobile you verified. Fastest way back in.'
+          : 'Goes to your inbox. Check your junk folder if it does not show up.';
+      }));
+
     panes.reset.addEventListener('submit', async e => {
       e.preventDefault();
       const f = e.target, btn = f.querySelector('button[type=submit]'), err = $('rsError');
+      const email = f.rsEmail.value.trim().toLowerCase();
+      const byText = f.rsHow.value === 'text';
       err.hidden = true; btn.disabled = true; btn.textContent = 'Sending…';
       try {
-        await Auth.requestPasswordReset(f.rsEmail.value.trim().toLowerCase());
+        if (byText) await Store.resetByText(email);
+        else await Auth.requestPasswordReset(email);
         Object.values(panes).forEach(el => { el.hidden = true; });
-        notice(`<h3>Check your inbox</h3><p>If there is an account for <b>${esc(f.rsEmail.value.trim())}</b> we have sent a link to choose a new password.</p>`);
+        notice(byText
+          ? `<h3>Check your phone</h3><p>If there is an account for <b>${esc(email)}</b> with a verified mobile, we have texted a link to set a new password. It works once and runs out shortly.</p><p class="dim">No text? The number on the account may not be verified. Call the club and we will sort it.</p>`
+          : `<h3>Check your inbox</h3><p>If there is an account for <b>${esc(email)}</b> we have sent a link to choose a new password.</p>`);
       } catch (ex) {
         btn.disabled = false; btn.innerHTML = 'Send reset link <span class="arr">→</span>';
         err.textContent = /rate/i.test(String(ex.message)) ? 'Please wait a minute before requesting another link.' : 'Could not send the link just now. Please try again.';
@@ -104,6 +120,47 @@
     const n = $('acNotice');
     n.innerHTML = html;
     n.hidden = false;
+  }
+
+  /* ============ arrived from a texted reset link ============ */
+  async function renderTokenReset(token) {
+    show('acTokenReset');
+    const form = $('acTokenForm'), dead = $('acTokenDead'), err = $('tkError');
+
+    let who = null;
+    try { who = await Store.peekResetToken(token); } catch {}
+    if (!who?.ok) {
+      form.hidden = true;
+      dead.hidden = false;
+      return;
+    }
+    $('acTokenWho').innerHTML = `Setting a new password for <b>${esc(who.email)}</b>. This link works once.`;
+
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      const f = e.target, btn = f.querySelector('button[type=submit]');
+      err.hidden = true;
+      if (f.tkPass.value !== f.tkConfirm.value) {
+        err.textContent = 'Those passwords do not match.'; err.hidden = false; return;
+      }
+      btn.disabled = true; btn.textContent = 'Saving…';
+      try {
+        const r = await Store.completeReset(token, f.tkPass.value);
+        // the token is spent now, so sign them straight in with what they just chose
+        await Auth.signIn(r.email, f.tkPass.value);
+        location.replace(location.pathname + '?saved=password');
+      } catch (ex) {
+        btn.disabled = false; btn.innerHTML = 'Save and sign in <span class="arr">→</span>';
+        const m = String(ex.message);
+        if (m === 'used' || m === 'expired' || m === 'invalid') {
+          form.hidden = true; dead.hidden = false;
+        } else if (m === 'weak_password') {
+          err.textContent = 'Password needs to be at least 8 characters.'; err.hidden = false;
+        } else {
+          err.textContent = 'Could not save that just now. Please try again.'; err.hidden = false;
+        }
+      }
+    });
   }
 
   /* ================= password recovery ================= */

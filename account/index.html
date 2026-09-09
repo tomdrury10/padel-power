@@ -22,7 +22,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="icon" type="image/png" href="../assets/favicon.png">
 <link rel="apple-touch-icon" href="../assets/favicon.png">
-<link rel="stylesheet" href="../assets/styles.css?v=40">
+<link rel="stylesheet" href="../assets/styles.css?v=41">
 </head>
 <body>
 
@@ -137,12 +137,39 @@
         <form class="cform" id="acReset" hidden>
           <p class="ev-authnote">Enter your email and we will send you a link to choose a new password.</p>
           <div><label for="rsEmail">Email</label><input id="rsEmail" name="rsEmail" type="email" placeholder="you@email.com" autocomplete="username" required></div>
+          <div class="rs-how">
+            <label><input type="radio" name="rsHow" value="text" checked><span>Text it to my mobile</span></label>
+            <label><input type="radio" name="rsHow" value="email"><span>Email it to me</span></label>
+          </div>
+          <p class="ac-fine" id="rsHint">Goes to the mobile you verified. Fastest way back in.</p>
           <div class="lg-error" id="rsError" hidden></div>
           <div><button class="btn btn-blue" type="submit" style="width:100%;justify-content:center">Send reset link <span class="arr">→</span></button></div>
           <button type="button" class="ev-forgot" data-tab="in">Back to sign in</button>
         </form>
 
         <div class="ev-confirm" id="acNotice" hidden></div>
+      </aside>
+    </div>
+
+    <!-- arrived from a texted reset link -->
+    <div class="ac-authwrap" id="acTokenReset" hidden>
+      <div class="ac-intro">
+        <span class="eyebrow">Password reset</span>
+        <h1 class="h-giant">Set a<br><span class="blue">new password</span></h1>
+        <p class="lede" id="acTokenWho">Choose something you will remember. This link works once.</p>
+      </div>
+      <aside class="ev-card">
+        <form class="cform" id="acTokenForm">
+          <div><label for="tkPass">New password</label><input id="tkPass" name="tkPass" type="password" autocomplete="new-password" minlength="8" required placeholder="At least 8 characters"></div>
+          <div><label for="tkConfirm">Confirm new password</label><input id="tkConfirm" name="tkConfirm" type="password" autocomplete="new-password" minlength="8" required></div>
+          <div class="lg-error" id="tkError" hidden></div>
+          <div><button class="btn btn-blue" type="submit" style="width:100%;justify-content:center">Save and sign in <span class="arr">→</span></button></div>
+        </form>
+        <div class="ev-confirm" id="acTokenDead" hidden>
+          <h3>That link has expired</h3>
+          <p>Reset links work once and last a few minutes. Ask for a new one and we will text it straight over.</p>
+          <p><a href="?reset=1" style="color:var(--blue)">Send me a new link</a></p>
+        </div>
       </aside>
     </div>
 
@@ -276,8 +303,8 @@
 </footer>
 
 <script src="../assets/site.js?v=4"></script>
-<script src="../assets/pilates-core.js?v=22"></script>
+<script src="../assets/pilates-core.js?v=23"></script>
 <script src="../assets/phone-verify.js?v=1"></script>
-<script src="../assets/account.js?v=3"></script>
+<script src="../assets/account.js?v=4"></script>
 </body>
 </html>

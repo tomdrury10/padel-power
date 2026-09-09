@@ -1812,3 +1812,7 @@ nav.links a{white-space:nowrap}
 .ac-tag.warn{color:var(--tan);border-color:rgba(201,144,92,.5)}
 .d2-check{display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13.5px;color:var(--tx2)}
 .d2-check input{width:16px;height:16px;accent-color:var(--fullc);cursor:pointer;flex:none}
+.rs-how{display:flex;gap:18px;flex-wrap:wrap;margin-top:-4px}
+.rs-how label{display:flex;align-items:center;gap:8px;cursor:pointer;font-family:var(--display);font-size:14px;color:var(--paper-dim);text-transform:none;letter-spacing:0;margin:0}
+.rs-how input{width:16px;height:16px;accent-color:var(--blue);cursor:pointer;flex:none;margin:0}
+.rs-how input:checked+span{color:var(--paper)}

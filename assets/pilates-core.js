@@ -345,6 +345,18 @@ const Store = {
   async checkoutStatus(sessionId) {
     return ppFn(`checkout?session=${encodeURIComponent(sessionId)}`);
   },
+  // password reset by text. "request" always answers the same, whatever
+  // happened, so the page cannot be used to test which emails have accounts.
+  resetByText(email) {
+    return ppFn('reset-password-sms', { method: 'POST', body: JSON.stringify({ action: 'request', email }) });
+  },
+  peekResetToken(token) {
+    return ppFn('reset-password-sms', { method: 'POST', body: JSON.stringify({ action: 'peek', token }) });
+  },
+  completeReset(token, password) {
+    return ppFn('reset-password-sms', { method: 'POST', body: JSON.stringify({ action: 'complete', token, password }) });
+  },
+
   // member: mobile verification by SMS code
   phoneState() { return ppFn('verify-phone'); },
   sendCode() { return ppFn('verify-phone', { method: 'POST', body: JSON.stringify({ action: 'send' }) }); },
