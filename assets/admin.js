@@ -836,6 +836,8 @@ function renderSettings() {
   f.rPackCredits.value = RULES.packCredits;
   f.rPackPrice.value = RULES.packPrice / 100;
   f.rPackMonths.value = RULES.packMonths;
+  f.rRequirePhone.checked = RULES.requirePhone;
+  f.rCodeMinutes.value = RULES.codeMinutes;
   $('pwEmail').textContent = Auth.email() || '';
   $('newType').hidden = !isAdmin();
   renderInstructors();
@@ -935,6 +937,7 @@ $('rulesForm').addEventListener('submit', async e => {
     await Settings.saveRules({
       maxRiders: max, minRiders: min, cutoffHours: +f.rCutoff.value, windowDays: +f.rWindow.value,
       packCredits: +f.rPackCredits.value, packPrice, packMonths: +f.rPackMonths.value,
+      requirePhone: f.rRequirePhone.checked, codeMinutes: +f.rCodeMinutes.value,
     });
     $('rulesSaved').hidden = false;
     setTimeout(() => { $('rulesSaved').hidden = true; }, 2000);

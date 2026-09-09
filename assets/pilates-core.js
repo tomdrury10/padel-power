@@ -222,6 +222,8 @@ const RULES = {
   packCredits: 6,
   packPrice: 10000,     // pence
   packMonths: 3,
+  requirePhone: false,  // master switch; off until ClickSend is wired up
+  codeMinutes: 10,
 };
 const CLASS_TYPES = {};   // key -> { name, level, desc, custom }
 const TIMETABLE = {};     // weekday -> [[time, typeKey], ...]
@@ -343,6 +345,15 @@ const Store = {
   async checkoutStatus(sessionId) {
     return ppFn(`checkout?session=${encodeURIComponent(sessionId)}`);
   },
+  // member: mobile verification by SMS code
+  phoneState() { return ppFn('verify-phone'); },
+  sendCode() { return ppFn('verify-phone', { method: 'POST', body: JSON.stringify({ action: 'send' }) }); },
+  async checkCode(code) {
+    const r = await ppFn('verify-phone', { method: 'POST', body: JSON.stringify({ action: 'check', code }) });
+    await Member.load().catch(() => {});
+    return r;
+  },
+
   // member: cancel one of their own bookings (refund / credit handled server-side)
   async cancelMine(bookingId) {
     const r = await ppFn('cancel-booking', { method: 'POST', body: JSON.stringify({ booking_id: bookingId }) });
@@ -455,12 +466,15 @@ function mapBooking(r) {
 
 /* ---------- member: profile, credits, own bookings ---------- */
 const Member = {
-  profile: null,     // { name, phone }
+  profile: null,     // { name, phone, verifiedAt }
   packs: [],         // { id, total, left, expiresAt, purchasedAt, amount }
   bookings: [],      // own bookings, mapped, newest first (incl. cancelled)
   waiver: false,
   loaded: false,
   reset() { this.profile = null; this.packs = []; this.bookings = []; this.waiver = false; this.loaded = false; },
+  // true when the mobile is proved, or when the studio is not asking yet
+  phoneOk() { return !RULES.requirePhone || !!this.profile?.verifiedAt; },
+  needsPhone() { return RULES.requirePhone && !this.profile?.verifiedAt; },
   credits() {
     const now = Date.now();
     return this.packs.filter(p => p.left > 0 && p.expiresAt > now).reduce((n, p) => n + p.left, 0);
@@ -484,12 +498,16 @@ const Member = {
     if (!uid) { this.reset(); return; }
     const email = (Auth.email() || '').toLowerCase();
     const [prof, packs, rows, waiver] = await Promise.all([
-      ppApi(`profiles?user_id=eq.${uid}&select=full_name,phone`),
+      ppApi(`profiles?user_id=eq.${uid}&select=full_name,phone,phone_verified_at`),
       ppApi(`credit_packs?user_id=eq.${uid}&select=*&order=expires_at.asc`),
       ppApi(`bookings?user_id=eq.${uid}&select=*&order=created_at.desc&limit=200`),
       email ? ppApi(`waivers?email=eq.${encodeURIComponent(email)}&select=signed_at`) : Promise.resolve([]),
     ]);
-    this.profile = { name: prof[0]?.full_name || '', phone: prof[0]?.phone || '' };
+    this.profile = {
+      name: prof[0]?.full_name || '',
+      phone: prof[0]?.phone || '',
+      verifiedAt: prof[0]?.phone_verified_at ? Date.parse(prof[0].phone_verified_at) : null,
+    };
     this.packs = packs.map(p => ({
       id: p.id, total: p.credits_total, left: p.credits_left, amount: p.amount_pence,
       expiresAt: Date.parse(p.expires_at), purchasedAt: Date.parse(p.purchased_at), note: p.note || '',
@@ -507,7 +525,10 @@ const Member = {
     } else {
       await ppApi('profiles', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ user_id: uid, ...body }) });
     }
-    this.profile = { name: fields.name, phone: fields.phone };
+    // changing the number clears the verification server-side, so re-read
+    await this.load().catch(() => {
+      this.profile = { name: fields.name, phone: fields.phone, verifiedAt: null };
+    });
   },
 };
 
@@ -533,6 +554,7 @@ const Settings = {
         max_riders: rules.maxRiders, min_riders: rules.minRiders,
         cutoff_hours: rules.cutoffHours, window_days: rules.windowDays,
         pack_credits: rules.packCredits, pack_price_pence: rules.packPrice, pack_expiry_months: rules.packMonths,
+        require_phone_verification: rules.requirePhone, verification_code_minutes: rules.codeMinutes,
       }),
     });
     Object.assign(RULES, rules);
@@ -686,6 +708,8 @@ async function ppInit() {
       packCredits: s.pack_credits ?? RULES.packCredits,
       packPrice: s.pack_price_pence ?? RULES.packPrice,
       packMonths: s.pack_expiry_months ?? RULES.packMonths,
+      requirePhone: s.require_phone_verification ?? RULES.requirePhone,
+      codeMinutes: s.verification_code_minutes ?? RULES.codeMinutes,
     });
   }
   counts.forEach(r => { cache.counts[r.class_id] = r.booked; });

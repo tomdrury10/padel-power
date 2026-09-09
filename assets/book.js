@@ -89,6 +89,19 @@
     if (signedIn) renderBook(); else renderAuth();
   }
 
+  // The mobile has to be proved before a bed can be held, because the
+  // confirmation and the cancel link both go by text. Returns true when
+  // we are clear to book; otherwise opens the code screen and returns false.
+  function phoneReady(retry) {
+    if (!Member.needsPhone()) return true;
+    PhoneVerify.open({
+      reason: 'Before we hold your bed, we need to know we can text you. Your confirmation and cancellation link both go by text.',
+      onDone: () => { renderBook(); if (retry) retry(); },
+      onSkip: () => renderBook(),
+    });
+    return false;
+  }
+
   /* ---- signed in: choose how to pay ---- */
   function renderBook() {
     authBox.hidden = true;
@@ -97,7 +110,12 @@
     $('evWho').innerHTML = `Booking as <b>${esc(who || '')}</b>${Member.profile?.name ? ` · ${esc(Auth.email() || '')}` : ''}`;
     const credits = Member.credits();
     let html = '';
-    if (!price) {
+    if (Member.needsPhone()) {
+      html = `
+        <button class="btn btn-blue" id="evVerify" style="width:100%;justify-content:center">Verify my mobile <span class="arr">→</span></button>
+        <p class="ev-credits">One text, one code, then you can book.</p>`;
+      small.textContent = 'We text your confirmation and your cancellation link, so the number has to be right.';
+    } else if (!price) {
       html = `<button class="btn btn-blue" id="evFree" style="width:100%;justify-content:center">Confirm booking <span class="arr">→</span></button>`;
       small.textContent = 'Cancel up to 24 hours before class from your account.';
     } else if (credits > 0) {
@@ -115,16 +133,19 @@
     $('evActions').innerHTML = html;
     small.style.display = '';
 
+    const verify = $('evVerify');
+    if (verify) verify.addEventListener('click', () => phoneReady());
+
     const free = $('evFree'), credit = $('evCredit'), card = $('evPayCard');
-    if (free) free.addEventListener('click', () => run(free, 'Booking…', async () => {
+    if (free) free.addEventListener('click', () => phoneReady(() => free.click()) && run(free, 'Booking…', async () => {
       await Store.book(id, { name: Member.profile?.name || '', email: Auth.email(), phone: Member.profile?.phone || '' });
       hideAll(); showDone();
     }));
-    if (credit) credit.addEventListener('click', () => run(credit, 'Booking…', async () => {
+    if (credit) credit.addEventListener('click', () => phoneReady(() => credit.click()) && run(credit, 'Booking…', async () => {
       await Store.bookWithCredit(id);
       hideAll(); showDone(true);
     }));
-    if (card) card.addEventListener('click', () => run(card, 'Taking you to payment…', async () => {
+    if (card) card.addEventListener('click', () => phoneReady(() => card.click()) && run(card, 'Taking you to payment…', async () => {
       const { url } = await Store.checkout(id);
       location.href = url;
       await new Promise(() => {});   // leave the button disabled while we navigate
@@ -159,6 +180,9 @@
       } else if (msg.includes('no_credits')) {
         alert('You have no class credits left. Pay by card, or buy a pack from your account.');
         await Member.load().catch(() => {}); renderBook();
+      } else if (msg.includes('phone_unverified')) {
+        await Member.load().catch(() => {});
+        phoneReady(() => btn.click());
       } else if (msg.includes('profile_incomplete')) {
         alert('Add your mobile number to your account first so we can text you about the class.');
         location.href = '../account/#details';
@@ -212,6 +236,17 @@
               <p>We have sent a confirmation link to <b>${esc(f.suEmail.value.trim())}</b>. Tap it and you will land back here, signed in and ready to book.</p>
               <p class="dim">No email after a minute? Check your junk folder, or message us on WhatsApp.</p>
             </div>`;
+          return;
+        }
+        await Member.load().catch(() => {});
+        if (Member.needsPhone()) {
+          authBox.hidden = true;
+          spotsEl.textContent = spotsLabel();
+          PhoneVerify.open({
+            reason: 'Account created. Now we just need to know we can text you, because that is how your confirmation and cancellation link arrive.',
+            onDone: () => location.reload(),
+            onSkip: () => location.reload(),
+          });
           return;
         }
         location.reload();

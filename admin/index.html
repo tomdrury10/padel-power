@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="icon" type="image/png" href="../assets/favicon.png">
-<link rel="stylesheet" href="../assets/styles.css?v=38">
+<link rel="stylesheet" href="../assets/styles.css?v=39">
 </head>
 <body class="d2">
 
@@ -221,7 +221,7 @@
         </div>
         <div class="d2-card">
           <div class="d2-card-head"><h2>Studio rules</h2></div>
-          <p class="d2-sub">These drive the public booking page and the schedule. Changes apply immediately. Members buy class packs from their account; the pack settings set the price, size and expiry of new packs.</p>
+          <p class="d2-sub">These drive the public booking page and the schedule. Changes apply immediately. Members buy class packs from their account; the pack settings set the price, size and expiry of new packs. Mobile verification texts a 6 digit code at signup, and needs the ClickSend keys set in Supabase before it will work.</p>
           <form class="d2-rules" id="rulesForm">
             <label>Beds per class<input name="rMax" type="number" min="1" max="20" required></label>
             <label>Minimum to run<input name="rMin" type="number" min="1" max="10" required></label>
@@ -230,6 +230,11 @@
             <label>Classes per pack<input name="rPackCredits" type="number" min="1" max="50" required></label>
             <label>Pack price (£)<input name="rPackPrice" type="number" min="1" max="1000" step="0.01" required></label>
             <label>Pack valid for (months)<input name="rPackMonths" type="number" min="1" max="24" required></label>
+            <label>Code expires after (minutes)<input name="rCodeMinutes" type="number" min="2" max="60" required></label>
+            <label class="d2-check" style="grid-column:1 / -1">
+              <input name="rRequirePhone" type="checkbox">
+              <span>Members must verify their mobile by text before booking</span>
+            </label>
             <div class="d2-form-row">
               <button class="d2-btn primary" type="submit">Save rules</button>
               <span class="d2-saved" id="rulesSaved" hidden>Saved</span>
@@ -406,7 +411,7 @@
 </div>
 
 
-<script src="../assets/pilates-core.js?v=20"></script>
-<script src="../assets/admin.js?v=28"></script>
+<script src="../assets/pilates-core.js?v=21"></script>
+<script src="../assets/admin.js?v=29"></script>
 </body>
 </html>

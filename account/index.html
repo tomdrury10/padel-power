@@ -22,7 +22,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="icon" type="image/png" href="../assets/favicon.png">
 <link rel="apple-touch-icon" href="../assets/favicon.png">
-<link rel="stylesheet" href="../assets/styles.css?v=38">
+<link rel="stylesheet" href="../assets/styles.css?v=39">
 </head>
 <body>
 
@@ -179,6 +179,13 @@
       <div class="ev-note" id="acStaffNote" hidden>You are signed in with a staff account. <a href="../admin/">Open the Studio Manager</a>.</div>
       <div class="ev-note ok" id="acFlash" hidden></div>
 
+      <section class="ac-card ac-verify" id="acVerify" hidden>
+        <div class="ac-card-head"><span class="k">Verify your mobile</span></div>
+        <p class="ac-sub">Your booking confirmation and your cancellation link both arrive by text, so we need to know the number works. We send one code and that is it.</p>
+        <p class="ac-phone" id="acVerifyPhone"></p>
+        <button class="btn btn-blue" id="acVerifyBtn" style="justify-content:center">Send me a code <span class="arr">→</span></button>
+      </section>
+
       <div class="ac-grid">
         <section class="ac-card" id="packs">
           <div class="ac-card-head"><span class="k">Class credits</span></div>
@@ -204,6 +211,9 @@
               <span class="ac-saved" id="pfSaved" hidden>Saved</span>
             </div>
           </form>
+          <div class="ac-waiver">
+            <div id="acPhoneTag"></div>
+          </div>
           <div class="ac-waiver" id="acWaiver"></div>
           <details class="ac-more">
             <summary>Change password</summary>
@@ -241,7 +251,8 @@
 </footer>
 
 <script src="../assets/site.js?v=4"></script>
-<script src="../assets/pilates-core.js?v=20"></script>
-<script src="../assets/account.js?v=1"></script>
+<script src="../assets/pilates-core.js?v=21"></script>
+<script src="../assets/phone-verify.js?v=1"></script>
+<script src="../assets/account.js?v=2"></script>
 </body>
 </html>

@@ -142,9 +142,13 @@
     if (q.get('saved') === 'password') flash('Your new password is saved.');
     if (q.get('pack_session')) await confirmPack(q.get('pack_session'));
 
+    renderVerify();
     renderCredits();
     renderBookings();
     renderDetails();
+
+    // arrived from signup with the number still unproved: get it done now
+    if (Member.needsPhone() && q.get('verify') === '1') openVerify();
 
     $('acSignOut').addEventListener('click', () => { Auth.signOut(); location.replace('../pilates/#book'); });
   }
@@ -153,6 +157,28 @@
     const f = $('acFlash');
     f.textContent = msg; f.hidden = false;
     history.replaceState(null, '', location.pathname + location.hash);
+  }
+
+  /* ---- mobile verification ---- */
+  function openVerify() {
+    PhoneVerify.open({
+      reason: 'We text your booking confirmation and your cancellation link, so we need to know the number works.',
+      onDone: () => { renderVerify(); renderDetails(); flash('Mobile verified. You are all set to book.'); },
+      onSkip: () => renderVerify(),
+    });
+  }
+
+  function renderVerify() {
+    const card = $('acVerify');
+    if (!Member.needsPhone()) {
+      card.hidden = true;
+      return;
+    }
+    card.hidden = false;
+    $('acVerifyPhone').textContent = Member.profile?.phone || 'No number on your account';
+    const btn = $('acVerifyBtn');
+    btn.disabled = !Member.profile?.phone;
+    btn.onclick = openVerify;
   }
 
   /* ---- credits ---- */
@@ -277,9 +303,18 @@
         $('pfSaved').hidden = false; setTimeout(() => { $('pfSaved').hidden = true; }, 2500);
         const first = f.pfName.value.trim().split(' ')[0];
         if (first) $('acTitle').innerHTML = `Hi<br><span class="blue">${esc(first)}</span>`;
+        renderVerify();
+        renderDetails();
+        if (Member.needsPhone()) flash('Details saved. That is a new number, so it needs verifying before your next booking.');
       } catch { alert('Could not save your details. Please try again.'); }
       btn.disabled = false;
     });
+
+    $('acPhoneTag').innerHTML = Member.profile?.verifiedAt
+      ? `<span class="ac-tag ok">Mobile verified</span>`
+      : RULES.requirePhone
+        ? `<span class="ac-tag warn">Mobile not verified</span>`
+        : `<span class="ac-tag">Mobile not verified</span>`;
 
     $('acWaiver').innerHTML = Member.waiver
       ? `<span class="ac-tag ok">Health questionnaire signed</span><p class="ac-fine">Tell your instructor if anything changes: injuries, pregnancy or a new medical condition.</p>`
