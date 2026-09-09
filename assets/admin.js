@@ -208,7 +208,7 @@ function renderSchedule() {
         <span class="n">${esc(c.instructor || shortName(c.t.name))}${c.custom ? ' +' : ''}</span>
       </button>`;
     }).join('');
-    return `<div class="d2-tg-col ${iso(d) === todayIso ? 'today' : ''}" style="height:${colH}px">${blocks}</div>`;
+    return `<div class="d2-tg-col ${iso(d) === todayIso ? 'today' : ''}" data-date="${iso(d)}" style="height:${colH}px">${blocks}</div>`;
   }).join('');
 
   $('calGrid').innerHTML = `
@@ -221,7 +221,10 @@ function renderSchedule() {
     `<span class="d2-leg-item ${typeClass(k)}"><i></i>${esc(shortName(t.name))}</span>`).join('');
 
   $('calGrid').querySelectorAll('.d2-ev').forEach(b =>
-    b.addEventListener('click', () => { selectedClass = b.dataset.id; renderSchedule(); }));
+    b.addEventListener('click', () => {
+      if (dragJustEnded) { dragJustEnded = false; return; }
+      selectedClass = b.dataset.id; renderSchedule();
+    }));
 
   renderDetail();
 }
@@ -260,6 +263,7 @@ function renderDetail() {
         : c.cancelled
           ? `<button class="d2-btn ghost" id="detRestore">Put class back on</button>`
           : `<button class="d2-btn danger" id="detCancelClass">Cancel class</button>`}
+      ${isAdmin() && !c.custom && !c.cancelled ? `<button class="d2-btn danger ghost" id="detRemoveSeries">Remove series</button>` : ''}
     </div>`;
   el.querySelectorAll('.wv-view').forEach(b =>
     b.addEventListener('click', () => openWaiverView(b.dataset.em)));
@@ -314,6 +318,17 @@ function renderDetail() {
     refresh();
   });
 
+  const removeSeries = $('detRemoveSeries');
+  if (removeSeries) removeSeries.addEventListener('click', async () => {
+    const wd = c.date.getDay();
+    const slot = (TIMETABLE[wd] || []).find(s => s[0] === c.time);
+    if (!slot) { alert('Could not find the weekly slot for this class.'); return; }
+    if (!confirm(`Remove the ${TT_DAYS[wd]} ${c.time} class from EVERY week?\n\nBookings already made for upcoming dates are NOT cancelled or notified. Cancel those dates first if anyone is booked.\n\nTo take off just this date, use Cancel class instead.`)) return;
+    try { await Settings.removeTimetableSlot(slot[3], wd); selectedClass = null; }
+    catch { alert('Could not remove the series. Please try again.'); }
+    refresh();
+  });
+
   const restore = $('detRestore');
   if (restore) restore.addEventListener('click', async () => {
     if (!confirm('Put this class back on the timetable? Cancelled bookings are not restored.')) return;
@@ -321,6 +336,86 @@ function renderDetail() {
     refresh();
   });
 }
+
+/* --- drag a class to a different day or time --- */
+let dragState = null, dragJustEnded = false;
+
+function dragTarget(e) {
+  const under = document.elementFromPoint(e.clientX, e.clientY);
+  const col = under && under.closest('.d2-tg-col');
+  if (!col) return null;
+  const rect = col.getBoundingClientRect();
+  let mins = TG_START + (e.clientY - rect.top) / TG_H * 60;
+  mins = Math.round(mins / 30) * 30;
+  mins = Math.max(TG_START, Math.min(TG_END - 60, mins));
+  const time = `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`;
+  return { col, date: col.dataset.date, time };
+}
+function endDrag() {
+  if (!dragState) return;
+  dragState.el.classList.remove('dragging');
+  dragState.el.style.transform = '';
+  document.querySelectorAll('.d2-tg-col.dropok').forEach(c => c.classList.remove('dropok'));
+  dragState = null;
+}
+$('calGrid').addEventListener('pointerdown', e => {
+  if (!isAdmin() || e.button !== 0) return;
+  const el = e.target.closest('.d2-ev');
+  if (!el) return;
+  const c = findClass(el.dataset.id);
+  if (!c || c.cancelled || classStart(c.id) < new Date()) return;
+  dragState = { el, c, x: e.clientX, y: e.clientY, live: false };
+});
+$('calGrid').addEventListener('pointermove', e => {
+  if (!dragState) return;
+  const dx = e.clientX - dragState.x, dy = e.clientY - dragState.y;
+  if (!dragState.live) {
+    if (Math.hypot(dx, dy) < 6) return;
+    dragState.live = true;
+    dragState.el.classList.add('dragging');
+    try { dragState.el.setPointerCapture(e.pointerId); } catch {}
+  }
+  e.preventDefault();
+  dragState.el.style.transform = `translate(${dx}px, ${dy}px)`;
+  const t = dragTarget(e);
+  document.querySelectorAll('.d2-tg-col.dropok').forEach(c => c.classList.remove('dropok'));
+  if (t) t.col.classList.add('dropok');
+});
+$('calGrid').addEventListener('pointerup', async e => {
+  if (!dragState) return;
+  const { c, live } = dragState;
+  const t = live ? dragTarget(e) : null;
+  endDrag();
+  if (!live) return;
+  dragJustEnded = true;
+  if (!t || (t.date === iso(c.date) && t.time === c.time)) return;
+  const from = `${fmtDay.format(c.date)} ${fmtDate.format(c.date)} · ${c.time}`;
+  const toDate = new Date(t.date + 'T00:00:00');
+  const to = `${fmtDay.format(toDate)} ${fmtDate.format(toDate)} · ${t.time}`;
+  if (classStart(`${t.date}_${t.time}`) < new Date()) { alert('That time has already passed.'); return; }
+  if (!confirm(`Move ${c.t.name} from ${from} to ${to}?\n\nThis moves this one class only. Members already booked are moved with it and get a text about the change.`)) return;
+  try {
+    if (t.date === iso(c.date)) {
+      await Settings.moveOccurrence(t.date, c.time, t.time, c.instructor);
+    } else {
+      await ppApi('rpc/move_class_day', {
+        method: 'POST',
+        body: JSON.stringify({
+          p_old_date: iso(c.date), p_old_time: c.time,
+          p_new_date: t.date, p_new_time: t.time,
+          p_instructor: c.instructor || null,
+        }),
+      });
+    }
+  } catch (err) {
+    alert(String(err.message).includes('slot_taken')
+      ? 'There is already a class at that time. Pick a different slot.'
+      : 'Could not move the class. Please try again.');
+    return;
+  }
+  location.href = location.pathname + '?page=schedule';
+});
+$('calGrid').addEventListener('pointercancel', endDrag);
 
 $('wkPrev').addEventListener('click', () => { if (weekOffset > 0) { weekOffset--; renderSchedule(); } });
 $('wkNext').addEventListener('click', () => { weekOffset++; renderSchedule(); });
@@ -718,7 +813,6 @@ function renderSettings() {
   $('pwEmail').textContent = Auth.email() || '';
   $('newType').hidden = !isAdmin();
   renderInstructors();
-  renderTimetableEditor();
 }
 
 /* --- instructors --- */
@@ -770,84 +864,7 @@ $('newInstr').addEventListener('submit', async e => {
   renderInstructors();
 });
 
-/* --- weekly timetable editor --- */
 const TT_DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const TT_ORDER = [1, 2, 3, 4, 5, 6, 0];
-function renderTimetableEditor() {
-  if (!isAdmin()) {
-    // instructors see the timetable but can't change it
-    $('ttEditor').innerHTML = TT_ORDER.map(wd => `
-      <div class="day">
-        <h3>${TT_DAYS[wd]}</h3>
-        ${(TIMETABLE[wd] || []).map(([time, , instr]) => `
-          <div class="slot"><b style="font-family:var(--mono)">${time}</b><span>${esc(instr || 'No instructor')}</span></div>`).join('') || '<p class="d2-empty">No classes.</p>'}
-      </div>`).join('');
-    return;
-  }
-  $('ttEditor').innerHTML = TT_ORDER.map(wd => `
-    <div class="day">
-      <h3>${TT_DAYS[wd]}</h3>
-      ${(TIMETABLE[wd] || []).map(([time, type, instr, id]) => `
-        <div class="slot" data-id="${id}" data-wd="${wd}" data-orig="${time}">
-          <input class="d2-input tt-time" type="time" value="${time}" required>
-          <select class="d2-input tt-instr">${instrOptions(instr || '')}</select>
-          <div class="row">
-            <button class="d2-btn ghost sm tt-save" type="button">Save</button>
-            <button class="d2-btn danger sm tt-del" type="button">Remove</button>
-          </div>
-        </div>`).join('')}
-      <div class="slot add" data-wd="${wd}">
-        <input class="d2-input tt-ntime" type="time">
-        <select class="d2-input tt-ninstr">${instrOptions('')}</select>
-        <div class="row"><button class="d2-btn primary sm tt-add" type="button">+ Add class</button></div>
-      </div>
-    </div>`).join('');
-
-  $('ttEditor').querySelectorAll('.tt-add').forEach(b => b.addEventListener('click', async () => {
-    const box = b.closest('.slot'), wd = +box.dataset.wd;
-    const time = box.querySelector('.tt-ntime').value;
-    const instr = box.querySelector('.tt-ninstr').value.trim();
-    if (!time) { alert('Pick a start time.'); return; }
-    if ((TIMETABLE[wd] || []).some(s => s[0] === time)) {
-      alert(`There is already a class at ${time} on ${TT_DAYS[wd]}.`); return;
-    }
-    try { await Settings.addTimetableSlot(wd, time, Object.keys(CLASS_TYPES)[0], instr); }
-    catch { alert('Could not add the class. Please try again.'); }
-    renderTimetableEditor();
-  }));
-
-  $('ttEditor').querySelectorAll('.tt-save').forEach(b => b.addEventListener('click', async () => {
-    const box = b.closest('.slot'), wd = +box.dataset.wd, id = +box.dataset.id;
-    const time = box.querySelector('.tt-time').value;
-    const instr = box.querySelector('.tt-instr').value.trim();
-    if (!time) { alert('Pick a start time.'); return; }
-    if (time !== box.dataset.orig) {
-      if ((TIMETABLE[wd] || []).some(s => s[0] === time && s[3] !== id)) {
-        alert(`There is already a class at ${time} on ${TT_DAYS[wd]}.`); return;
-      }
-      if (!confirm(`Move the ${TT_DAYS[wd]} ${box.dataset.orig} class to ${time} every week from now on?\n\nMembers already booked onto upcoming dates are moved with the class and get a text about the change.`)) return;
-    }
-    try {
-      await Settings.moveTemplateSlot(id, time, instr);
-      const slot = (TIMETABLE[wd] || []).find(s => s[3] === id);
-      if (slot) { slot[0] = time; slot[2] = instr || null; TIMETABLE[wd].sort((a, b) => a[0].localeCompare(b[0])); }
-      await Store.loadBookings().catch(() => {});
-    } catch (err) {
-      alert(String(err.message).includes('slot_taken')
-        ? `There is already a class at ${time} on ${TT_DAYS[wd]}.`
-        : 'Could not save the change. Please try again.');
-    }
-    renderTimetableEditor();
-  }));
-
-  $('ttEditor').querySelectorAll('.tt-del').forEach(b => b.addEventListener('click', async () => {
-    const box = b.closest('.slot'), wd = +box.dataset.wd, id = +box.dataset.id;
-    if (!confirm(`Remove the ${TT_DAYS[wd]} ${box.dataset.orig} class from every week?\n\nBookings already made for upcoming dates are NOT cancelled or notified. Cancel those classes from the Schedule first if anyone is booked.`)) return;
-    try { await Settings.removeTimetableSlot(id, wd); }
-    catch { alert('Could not remove the class. Please try again.'); }
-    renderTimetableEditor();
-  }));
-}
 $('pwForm').addEventListener('submit', async e => {
   e.preventDefault();
   const f = e.target;
@@ -1108,11 +1125,25 @@ $('clForm').addEventListener('submit', async e => {
   e.preventDefault();
   const f = e.target;
   const d = new Date(f.clDate.value + 'T00:00:00');
-  if (classesFor(d).some(c => c.time === f.clTime.value)) {
-    alert('There is already a class at ' + f.clTime.value + ' that day.');
+  const time = f.clTime.value;
+  const instr = f.clInstructor.value.trim();
+  const weekly = f.clRepeat.value === 'weekly';
+  if (classesFor(d).some(c => c.time === time)) {
+    alert('There is already a class at ' + time + ' that day.');
     return;
   }
-  try { await Store.addClass(f.clDate.value, f.clTime.value, f.clType.value, f.clInstructor.value.trim()); } catch { alert('Could not add the class. Please try again.'); return; }
+  try {
+    if (weekly) {
+      const wd = d.getDay();
+      if ((TIMETABLE[wd] || []).some(s => s[0] === time)) {
+        alert(`There is already a weekly class at ${time} on ${TT_DAYS[wd]}s.`); return;
+      }
+      if (!confirm(`Add this class at ${time} every ${TT_DAYS[wd]} from ${fmtDate.format(d)} onwards?`)) return;
+      await Settings.addTimetableSlot(wd, time, f.clType.value, instr);
+    } else {
+      await Store.addClass(f.clDate.value, time, f.clType.value, instr);
+    }
+  } catch { alert('Could not add the class. Please try again.'); return; }
   closeDrawers();
   render();
 });

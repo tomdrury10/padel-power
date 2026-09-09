@@ -1,0 +1,16 @@
+-- Applied directly to the Padel Power project on 2026-09-09 via MCP.
+-- 1. notify_instructor_cancelled: skip rows whose reason starts 'moved to '
+--    (moves hide the origin slot with such a marker; instructors were getting
+--    a false "cancelled" notice on every move).
+-- 2. move_class_day(p_old_date, p_old_time, p_new_date, p_new_time, p_instructor):
+--    moves ONE occurrence to any date+time. Mirrors move_class_occurrence:
+--    checks the target slot is free (slot_taken), moves/creates the custom row,
+--    re-points active bookings (each member gets a class_moved text via
+--    _notify_class_moved), then hides a template origin with a 'moved to' marker.
+--    Admin-only (pp_is_admin) since it is SECURITY DEFINER.
+-- 3. revoked anon execute on move_class_occurrence / move_class_template /
+--    move_class_day (they are SECURITY DEFINER and were callable with the
+--    public anon key).
+--
+-- Full SQL is in the applied migration 'move_class_day_and_trigger_fix'
+-- (Supabase dashboard > Database > Migrations).

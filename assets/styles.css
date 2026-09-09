@@ -1630,3 +1630,8 @@ nav.links a{white-space:nowrap}
 .pinstr-fit{margin-top:auto;font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--paper-faint,rgba(255,255,255,.45));border-top:1px solid rgba(255,255,255,.1);padding-top:12px}
 @media(max-width:960px){.pinstr-grid{grid-template-columns:1fr}.pinstr{flex-direction:row}.pinstr-photo{width:150px;aspect-ratio:auto;flex:none}}
 @media(max-width:560px){.pinstr{flex-direction:column}.pinstr-photo{width:100%;aspect-ratio:16/10}}
+
+/* calendar drag to move */
+.d2-ev{touch-action:none}
+.d2-ev.dragging{opacity:.75;z-index:9;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,.35);cursor:grabbing}
+.d2-tg-col.dropok{background:rgba(29,127,184,.08)}
