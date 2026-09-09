@@ -1,0 +1,6 @@
+{
+  "redirects": [
+    { "source": "/leagues/", "destination": "/northampton-padel-league/", "permanent": true },
+    { "source": "/leagues", "destination": "/northampton-padel-league/", "permanent": true }
+  ]
+}
