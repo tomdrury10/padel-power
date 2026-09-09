@@ -1617,14 +1617,14 @@ nav.links a{white-space:nowrap}
 @media(max-width:640px){.d2-rpt-row{grid-template-columns:1fr 90px 40px}.d2-rpt-row .ct{display:none}}
 
 /* pilates instructor profiles */
-.pinstr-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.pinstr-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
 .pinstr{border:1px solid rgba(255,255,255,.1);border-radius:16px;overflow:hidden;background:rgba(255,255,255,.03);display:flex;flex-direction:column}
 .pinstr-photo{aspect-ratio:4/5;overflow:hidden}
 .pinstr-photo img{width:100%;height:100%;object-fit:cover;display:block}
 .pinstr-photo.ph{display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,rgba(29,127,184,.28),rgba(29,127,184,.06))}
 .pinstr-photo.ph span{font-family:var(--mono);font-size:44px;letter-spacing:.1em;color:rgba(255,255,255,.55)}
 .pinstr-body{padding:20px 22px 24px;display:flex;flex-direction:column;gap:10px;flex:1}
-.pinstr-body h3{font-size:22px;font-weight:740}
+.pinstr-body h3{font-size:20px;font-weight:740}
 .pinstr-role{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--blue)}
 .pinstr-body p{font-size:14px;line-height:1.65;color:var(--paper-dim,rgba(255,255,255,.72))}
 .pinstr-fit{margin-top:auto;font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--paper-faint,rgba(255,255,255,.45));border-top:1px solid rgba(255,255,255,.1);padding-top:12px}
