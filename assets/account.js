@@ -275,11 +275,19 @@
         if (m.includes('phone_unverified')) {
           await Member.load().catch(() => {});
           renderVerify();
-          PhoneVerify.open({
-            reason: 'Before you buy a pack we need to know your mobile works, because that is where your booking texts go.',
-            onDone: () => { renderVerify(); renderDetails(); $('acBuy').click(); },
-            onSkip: () => renderVerify(),
-          });
+          // Only offer the code if the account really is unverified, the same
+          // guard the booking page uses. Without it, a checkout that refuses
+          // while the profile says verified sends the overlay straight to
+          // "already done", which clicks this button again, forever.
+          if (Member.needsPhone()) {
+            PhoneVerify.open({
+              reason: 'Before you buy a pack we need to know your mobile works, because that is where your booking texts go.',
+              onDone: () => { renderVerify(); renderDetails(); $('acBuy').click(); },
+              onSkip: () => renderVerify(),
+            });
+          } else {
+            alert('We could not confirm your mobile just now. Try again in a moment, or call the club and we will sort it.');
+          }
         } else if (m.includes('profile_incomplete') || m.includes('missing_details')) {
           alert('Add your mobile number to your account first so we can text you about your classes.');
           location.hash = '#details';
