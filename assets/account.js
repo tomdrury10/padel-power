@@ -269,9 +269,28 @@
         location.href = url;
       } catch (err) {
         btn.disabled = false; renderCredits();
-        const m = String(err.message);
-        alert(m.includes('payments_not_configured') ? 'Online payment is not available right now. Please call the club.'
-          : m.includes('account_required') ? 'Please sign in again.' : 'Could not start the payment. Please try again.');
+        const m = String(err.message || '');
+        // The pack is gated on a proved mobile just like a booking is. Say so
+        // and offer the code there and then, rather than a dead end.
+        if (m.includes('phone_unverified')) {
+          await Member.load().catch(() => {});
+          renderVerify();
+          PhoneVerify.open({
+            reason: 'Before you buy a pack we need to know your mobile works, because that is where your booking texts go.',
+            onDone: () => { renderVerify(); renderDetails(); $('acBuy').click(); },
+            onSkip: () => renderVerify(),
+          });
+        } else if (m.includes('profile_incomplete') || m.includes('missing_details')) {
+          alert('Add your mobile number to your account first so we can text you about your classes.');
+          location.hash = '#details';
+        } else if (m.includes('payments_not_configured')) {
+          alert('Online payment is not available right now. Please call the club.');
+        } else if (m.includes('account_required') || m.includes('JWT') || m.includes('signed_out')) {
+          alert('Please sign in again.');
+          Auth.signOut(); location.reload();
+        } else {
+          alert('Could not start the payment. Please try again.');
+        }
       }
     };
   }
