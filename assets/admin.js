@@ -1162,8 +1162,17 @@ $('clForm').addEventListener('submit', async e => {
   const time = f.clTime.value;
   const instr = f.clInstructor.value.trim();
   const weekly = f.clRepeat.value === 'weekly';
-  if (classesFor(d).some(c => c.time === time)) {
-    alert('There is already a class at ' + time + ' that day.');
+  // A class already at that time is usually a cover request, not a mistake:
+  // the caller wants Laura on a slot the timetable still gives to someone
+  // else. Send them to the edit drawer, which changes the instructor for
+  // that one date, instead of refusing with nothing to do next.
+  const clash = classesFor(d).find(c => c.time === time);
+  if (clash) {
+    const who = clash.instructor ? ` with ${clash.instructor}` : '';
+    if (confirm(`There is already a class at ${time}${who} on ${fmtDate.format(d)}.\n\nChange that class instead?`)) {
+      closeDrawers();
+      openMove(classInfo(d, clash));
+    }
     return;
   }
   try {
