@@ -1837,7 +1837,7 @@ nav.links a{white-space:nowrap}
 .lg-share input{flex:1;font-size:13px;padding:10px 12px;border:1px solid rgba(0,0,0,.15);border-radius:10px}
 .d2-league{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;padding:14px 0;border-top:1px solid rgba(0,0,0,.08)}
 .d2-league:first-child{border-top:0}
-.d2-league h4{grid-column:1 / -1;margin:0;font-size:15px;display:flex;justify-content:space-between;align-items:center}
+.d2-league h4{grid-column:1 / -1;margin:0;font-size:15px;font-weight:700;color:#0b0c0e;display:flex;justify-content:space-between;align-items:center}
 .d2-league label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:#6b6f76}
 .d2-league label.wide{grid-column:1 / -1}
 .d2-league input[type=text],.d2-league input[type=number],.d2-league input[type=date],.d2-league input[type=url]{padding:8px 10px;border:1px solid rgba(0,0,0,.15);border-radius:8px;font:inherit;font-size:14px}
