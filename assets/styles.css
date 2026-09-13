@@ -1844,3 +1844,36 @@ nav.links a{white-space:nowrap}
 .d2-league .d2-form-row{grid-column:1 / -1;justify-content:space-between;align-items:center}
 .d2-table td.lg-status .lg-pill{white-space:nowrap}
 .d2-table select.lg-act{font:inherit;font-size:13px;padding:5px 8px;border-radius:8px;border:1px solid rgba(0,0,0,.15)}
+
+/* ===== user guides (Studio Manager) ===== */
+.gd-group{margin-bottom:16px}
+.gd-item{border-top:1px solid var(--ln)}
+.gd-item:first-of-type{border-top:none}
+.gd-head{display:flex;align-items:center;justify-content:space-between;gap:14px;width:100%;
+  background:none;border:0;cursor:pointer;text-align:left;padding:15px 2px;color:inherit}
+.gd-head:hover .gd-title{color:var(--blue,#1d7fb8)}
+.gd-title{font-size:14.5px;font-weight:640;color:var(--tx)}
+.gd-chev{font-family:var(--mono);font-size:17px;line-height:1;color:var(--tx3);flex:none}
+.gd-item.open .gd-chev{color:var(--blue,#1d7fb8)}
+.gd-body{padding:0 2px 20px;max-width:74ch}
+.gd-intro{font-size:13.5px;line-height:1.65;color:var(--tx2);margin-bottom:14px}
+.gd-steps{margin:0 0 4px;padding-left:20px;display:flex;flex-direction:column;gap:9px}
+.gd-steps li{font-size:13.5px;line-height:1.6;color:var(--tx);padding-left:3px}
+.gd-steps li::marker{font-family:var(--mono);font-size:11.5px;color:var(--blue,#1d7fb8)}
+.gd-shot{margin:16px 0 4px}
+.gd-shot img{display:block;width:100%;border:1px solid var(--ln);border-radius:10px}
+.gd-shot figcaption{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--tx3);margin-top:7px}
+.gd-ph{display:none}
+.gd-missing .gd-ph{display:block;border:1px dashed var(--ln);border-radius:10px;padding:26px 18px;
+  text-align:center;font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--tx3);
+  background:rgba(0,0,0,.015)}
+.gd-missing .gd-ph code{font-size:11px;color:var(--tx2)}
+.gd-missing figcaption{display:none}
+.gd-notes{margin-top:16px;border-left:3px solid var(--blue,#1d7fb8);background:rgba(29,127,184,.05);
+  border-radius:0 8px 8px 0;padding:12px 16px}
+.gd-notes h4{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--blue,#1d7fb8);margin-bottom:8px}
+.gd-notes ul{margin:0;padding-left:17px;display:flex;flex-direction:column;gap:7px}
+.gd-notes li{font-size:13px;line-height:1.6;color:var(--tx2)}
+@media(max-width:640px){.gd-body{padding-bottom:16px}.gd-title{font-size:14px}}

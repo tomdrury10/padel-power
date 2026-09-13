@@ -66,7 +66,7 @@ const canEditClass = c => isAdmin() || teaches(c);
 
 // instructors get the schedule, their own classes' bookings, and a password
 // form. The database enforces all of it; this only shapes the UI.
-const INSTRUCTOR_PAGES = ['schedule', 'bookings', 'settings'];
+const INSTRUCTOR_PAGES = ['schedule', 'bookings', 'guides', 'settings'];
 
 function applyRole() {
   if (isAdmin()) return;
@@ -85,12 +85,12 @@ function instrOptions(selected) {
 }
 
 /* ---------- navigation ---------- */
-const TITLES = { overview: 'Overview', schedule: 'Schedule', bookings: 'Bookings', enquiries: 'Enquiries', reports: 'Reports', leagues: 'Leagues', settings: 'Settings' };
+const TITLES = { overview: 'Overview', schedule: 'Schedule', bookings: 'Bookings', enquiries: 'Enquiries', reports: 'Reports', leagues: 'Leagues', guides: 'User guides', settings: 'Settings' };
 function goto(p) {
   if (!isAdmin() && !INSTRUCTOR_PAGES.includes(p)) p = 'schedule';
   page = p;
   document.querySelectorAll('.d2-nav button').forEach(b => b.classList.toggle('on', b.dataset.page === p));
-  ['Overview', 'Schedule', 'Bookings', 'Enquiries', 'Reports', 'Leagues', 'Settings'].forEach(n => { $('pg' + n).hidden = n.toLowerCase() !== p; });
+  ['Overview', 'Schedule', 'Bookings', 'Enquiries', 'Reports', 'Leagues', 'Guides', 'Settings'].forEach(n => { $('pg' + n).hidden = n.toLowerCase() !== p; });
   $('pageTitle').textContent = TITLES[p];
   render();
 }
@@ -103,6 +103,7 @@ function render() {
   if (page === 'bookings') renderBookings();
   if (page === 'enquiries') renderEnquiries();
   if (page === 'reports') renderReports();
+  if (page === 'guides') renderGuides();
   if (page === 'leagues' && typeof renderLeagues === 'function') {
     const a = document.activeElement;
     if (a && $('pgLeagues').contains(a) && ['INPUT', 'TEXTAREA', 'SELECT'].includes(a.tagName)) return;
