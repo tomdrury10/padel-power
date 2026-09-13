@@ -94,8 +94,8 @@ async function setupSession(reg: Record<string, unknown>, customer: string, type
     mode: "setup",
     customer,
     "payment_method_types[0]": "card",
-    success_url: `${origin}/leagues/register/?done=1`,
-    cancel_url: `${origin}/leagues/register/?cancelled=1`,
+    success_url: `${origin}/northampton-padel-league/register/?done=1`,
+    cancel_url: `${origin}/northampton-padel-league/register/?cancelled=1`,
     "metadata[type]": type,
     "metadata[registration_id]": String(reg.id),
   });

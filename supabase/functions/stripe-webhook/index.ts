@@ -169,7 +169,7 @@ async function leagueInvoice(inv: Record<string, unknown>, paid: boolean) {
       registration_id: reg.id, first_name: String(reg.name).split(" ")[0], full_name: reg.name,
       email: reg.email, phone: reg.phone, phone_e164: String(reg.phone).replace(/\s+/g, ""),
       league: league?.name ?? "", amount: (Number(inv.amount_due) / 100).toFixed(2),
-      update_url: `${SITE}/leagues/register/`,
+      update_url: `${SITE}/northampton-padel-league/register/`,
     }),
   }).catch(() => {});
   return new Response("failed recorded", { status: 200 });

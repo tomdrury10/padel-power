@@ -154,7 +154,7 @@ async function lgAction(id, act) {
     }
     if (act === 'unlink') { if (!confirm(`Unlink ${r.name} from their partner?`)) return; await rpc('league_unlink', { p_reg: id }); }
     if (act === 'copy') {
-      const link = `https://www.padelpower.uk/leagues/register/?partner=${r.partner_code}`;
+      const link = `https://www.padelpower.uk/northampton-padel-league/register/?partner=${r.partner_code}`;
       await navigator.clipboard?.writeText(link); alert('Copied:\n' + link); return;
     }
     if (act === 'stop') { if (!confirm(`Stop all future weekly payments for ${r.name}? Payments already taken are not refunded. This cannot be undone.`)) return; await fn({ action: 'stop_billing' }); }

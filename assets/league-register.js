@@ -39,6 +39,11 @@
     const sel = $('lgLeague');
     sel.innerHTML = '<option value="">Choose a league</option>' + leagues.map(l =>
       `<option value="${l.id}"${open(l) ? '' : ' disabled'}>${esc(l.name)}${open(l) ? '' : ' (registration closed)'}</option>`).join('');
+    // ?league=mens-doubles from the league cards picks that league for them
+    const want = (q.get('league') || '').toLowerCase();
+    const slug = n => String(n).toLowerCase().replace(/['’]/g, '').replace(/[^a-z0-9]+/g, '-');
+    const pre = want && leagues.find(l => slug(l.name).startsWith(want));
+    if (pre && open(pre)) sel.value = pre.id;
     if (partnerCode) {
       $('lgCode').value = partnerCode;
       $('lgPartnerNote').textContent = 'You have a partner code, so pick the same league your partner chose and we will pair you up.';
@@ -131,7 +136,7 @@
     $('lgMineList').innerHTML = own.map(r => {
       const l = leagues.find(x => x.id === r.league_id) || {};
       const p = partnerOf(r);
-      const link = `${PP_SITE}/leagues/register/?partner=${r.partner_code}`;
+      const link = `${PP_SITE}/northampton-padel-league/register/?partner=${r.partner_code}`;
       const st = status(r, l, p);
       return `<div class="lg-reg">
         <h4>${esc(l.name || 'League')} <span class="lg-pill ${st.tone}">${st.label}</span></h4>
