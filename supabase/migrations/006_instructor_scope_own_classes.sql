@@ -1,0 +1,45 @@
+-- Applied to the Padel Power project on 2026-09-13 as migration
+-- 'instructor_scope_own_classes'. Recorded here for reference.
+--
+-- Instructors see the whole schedule, only their own classes' bookings, and
+-- may edit or cancel only the classes they teach. Everything else is admin.
+--
+-- 1. staff_roles.instructor_id linked for the four instructor logins:
+--      gabbydeere@gmail.com   -> Gabby Deere
+--      info@everyreformer.com -> Christie Manning
+--      lauraallanson@me.com   -> Laura Allanson
+--      verity.game@icloud.com -> Verity Game
+--    A new instructor login needs this row set, or they will see no bookings
+--    and be unable to edit any class.
+--
+-- 2. Helpers: pp_my_instructor_name(), pp_class_instructor(class_id),
+--    pp_teaches(class_id). pp_teaches resolves a class the same way the
+--    booking pages do: a one-off in custom_classes beats the weekly slot.
+--
+-- 3. View instructor_names (id, name, active) for the class dropdowns, so
+--    pay rates and colleagues' contact details stay admin-only.
+--
+-- 4. Tightened from "any staff" to admin-only: instructors (read), class
+--    prices, studio rules and pack settings, enquiries, credit packs, phone
+--    verifications, profiles, league members and audit.
+--
+-- 5. bookings: SELECT is admin, your own, or a class you teach. INSERT and
+--    UPDATE are admin or your own booking; DELETE is admin. Instructors
+--    therefore read their classes' bookings and write nothing.
+--
+-- 6. move_class_occurrence and move_class_template had NO permission check:
+--    any signed-in user could move any class. Occurrence moves are now admin
+--    or the class's own instructor; changing the recurring pattern is admin
+--    only.
+--
+-- 7. cancel_class_as_staff(date, time, reason): instructors have no write
+--    access to bookings, so cancelling runs entirely in the database in the
+--    same order as auto_cancel_under_min — marker first (it texts everyone
+--    still booked), then bookings close (credits return by trigger), then
+--    card payments go to _post_refunds. Admins keep the existing browser-side
+--    path; only instructors use this.
+--
+-- Verified by impersonation: as Gabby Deere, bookings_visible = 11 of 33
+-- (exactly her classes), instructors = 0, enquiries = 0, timetable = 22.
+--
+-- Full SQL is in the Supabase dashboard under Database > Migrations.
