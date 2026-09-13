@@ -232,3 +232,7 @@ begin
   return jsonb_build_object('ok', true, 'pair_id', pid, 'partner_name', them.name);
 end $$;
 revoke execute on function public.league_join_by_code(uuid, text) from public, anon, authenticated;
+
+-- the id embedded in a Playtomic share link, when there is one, so a later
+-- enrolment call has it without parsing the link again (applied 2026-09-13)
+alter table public.league_registrations add column if not exists playtomic_player_id text;

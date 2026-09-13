@@ -104,7 +104,7 @@ function drawRegs() {
     const l = LG.leagues.find(x => x.id === r.league_id) || {};
     const p = r.pair_id ? LG.regs.find(x => x.pair_id === r.pair_id && x.id !== r.id && !x.cancelled_at) : null;
     return `<tr>
-      <td><b>${esc(r.name)}</b><br><small>${esc(r.email)} · ${esc(r.phone)}</small><br><a class="d2-link" href="${esc(r.playtomic_url)}" target="_blank" rel="noopener">Playtomic profile ↗</a></td>
+      <td><b>${esc(r.name)}</b><br><small>${esc(r.email)} · ${esc(r.phone)}</small><br><a class="d2-link" href="${esc(r.playtomic_url)}" target="_blank" rel="noopener">Playtomic profile ↗</a>${r.playtomic_player_id ? `<br><small>id ${esc(r.playtomic_player_id)}</small>` : ''}</td>
       <td>${esc(l.name || '')}</td>
       <td>${r.membership_status === 'member' ? 'Member' : r.membership_status === 'review' ? 'Review' : 'Non-member'}</td>
       <td>${lgGbp(r.weekly_price_pence)}${r.payments_taken ? `<br><small>${r.payments_taken} taken</small>` : ''}</td>

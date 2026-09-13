@@ -23,6 +23,9 @@ const STRIPE_KEY = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
 const SITE = "https://www.padelpower.uk";
 const ALLOWED_ORIGINS = [SITE, "https://padelpower.uk", "http://localhost:4173", "http://localhost:8123"];
 const PLAYTOMIC = /^https:\/\/([a-z0-9-]+\.)*playtomic\.(io|com)\/.{3,}$/i;
+// a share link normally carries the player's id; keep it if it is there
+const UUID_IN = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+const playerIdFrom = (url: string) => (url.match(UUID_IN) || [null])[0];
 
 const CORS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -144,7 +147,7 @@ Deno.serve(async (req) => {
       const name = profile.full_name || user.email.split("@")[0];
       if (reg) {
         [reg] = await patch("league_registrations", reg.id, {
-          playtomic_url: playtomic, membership_status: membership, membership_checked_at: new Date().toISOString(),
+          playtomic_url: playtomic, playtomic_player_id: playerIdFrom(playtomic), membership_status: membership, membership_checked_at: new Date().toISOString(),
           weekly_price_pence: price, terms_accepted_at: new Date().toISOString(), name, email: user.email, phone: profile.phone,
         });
       } else {
@@ -152,7 +155,7 @@ Deno.serve(async (req) => {
           method: "POST", headers: { Prefer: "return=representation" },
           body: JSON.stringify({
             league_id: league.id, user_id: user.id, name, email: user.email, phone: profile.phone,
-            playtomic_url: playtomic, membership_status: membership, weekly_price_pence: price,
+            playtomic_url: playtomic, playtomic_player_id: playerIdFrom(playtomic), membership_status: membership, weekly_price_pence: price,
             terms_accepted_at: new Date().toISOString(),
           }),
         });
