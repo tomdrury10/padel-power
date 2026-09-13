@@ -23,9 +23,10 @@ const STRIPE_KEY = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
 const SITE = "https://www.padelpower.uk";
 const ALLOWED_ORIGINS = [SITE, "https://padelpower.uk", "http://localhost:4173", "http://localhost:8123"];
 const PLAYTOMIC = /^https:\/\/([a-z0-9-]+\.)*playtomic\.(io|com)\/.{3,}$/i;
-// a share link normally carries the player's id; keep it if it is there
-const UUID_IN = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
-const playerIdFrom = (url: string) => (url.match(UUID_IN) || [null])[0];
+// a share link looks like https://app.playtomic.com/profile/user/17020714?utm_...
+// so the id is the path segment after /user/; older links may carry a UUID
+const playerIdFrom = (url: string) =>
+  (url.match(/\/profile\/user\/([A-Za-z0-9-]+)/) || url.match(/\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i) || [null, null])[1];
 
 const CORS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",

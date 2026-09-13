@@ -59,10 +59,22 @@ function upcoming(days = RULES.windowDays) {
 
 /* ---------- roles + instructors ---------- */
 const isAdmin = () => PP_ROLE === 'admin';
+// an instructor may edit and cancel the classes they teach, nobody else's
+const teaches = c => !!(PP_INSTRUCTOR && c && c.instructor
+  && String(c.instructor).toLowerCase() === String(PP_INSTRUCTOR).toLowerCase());
+const canEditClass = c => isAdmin() || teaches(c);
+
+// instructors get the schedule, their own classes' bookings, and a password
+// form. The database enforces all of it; this only shapes the UI.
+const INSTRUCTOR_PAGES = ['schedule', 'bookings', 'settings'];
+
 function applyRole() {
   if (isAdmin()) return;
   $('addClassBtn').hidden = true;
-  $('navReports').hidden = true; // financials are admin-only
+  $('globalNew').hidden = true;            // bookings are view only
+  document.querySelectorAll('.d2-nav button').forEach(b => {
+    b.hidden = !INSTRUCTOR_PAGES.includes(b.dataset.page);
+  });
 }
 // options for an instructor dropdown; keeps a legacy free-text name selectable
 function instrOptions(selected) {
@@ -75,7 +87,7 @@ function instrOptions(selected) {
 /* ---------- navigation ---------- */
 const TITLES = { overview: 'Overview', schedule: 'Schedule', bookings: 'Bookings', enquiries: 'Enquiries', reports: 'Reports', leagues: 'Leagues', settings: 'Settings' };
 function goto(p) {
-  if (p === 'reports' && !isAdmin()) p = 'overview';
+  if (!isAdmin() && !INSTRUCTOR_PAGES.includes(p)) p = 'schedule';
   page = p;
   document.querySelectorAll('.d2-nav button').forEach(b => b.classList.toggle('on', b.dataset.page === p));
   ['Overview', 'Schedule', 'Bookings', 'Enquiries', 'Reports', 'Leagues', 'Settings'].forEach(n => { $('pg' + n).hidden = n.toLowerCase() !== p; });
@@ -258,17 +270,17 @@ function renderDetail() {
         <div class="d2-att">
           <div><b>${esc(p.name)}</b><span>${esc(p.phone || '')}${p.email ? ' · ' + esc(p.email) : ''}${payLabel(p)}${waiverMark(p.email)}</span></div>
           <span class="d2-tag ${p.source === 'Online' ? 'online' : ''}">${esc(p.source)}</span>
-          <button class="d2-x" data-bid="${p.id}" title="Remove booking"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
+          ${isAdmin() ? `<button class="d2-x" data-bid="${p.id}" title="Remove booking"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M5 5l14 14M19 5L5 19"/></svg></button>` : ''}
         </div>`).join('') : '<p class="d2-empty">No bookings yet.</p>'}
     </div>
     <div class="d2-det-actions">
-      ${!c.cancelled && free > 0 ? `<button class="d2-btn primary" id="detAdd">+ New booking</button>` : ''}
-      ${!c.cancelled && isAdmin() ? `<button class="d2-btn ghost" id="detEdit">Edit class</button>` : ''}
-      ${!isAdmin() ? ''
-        : c.cancelled
-          ? `<button class="d2-btn ghost" id="detRestore">Put class back on</button>`
-          : `<button class="d2-btn danger" id="detCancelClass">Cancel class</button>`}
+      ${!c.cancelled && free > 0 && isAdmin() ? `<button class="d2-btn primary" id="detAdd">+ New booking</button>` : ''}
+      ${!c.cancelled && canEditClass(c) ? `<button class="d2-btn ghost" id="detEdit">Edit class</button>` : ''}
+      ${c.cancelled
+        ? (isAdmin() ? `<button class="d2-btn ghost" id="detRestore">Put class back on</button>` : '')
+        : (canEditClass(c) ? `<button class="d2-btn danger" id="detCancelClass">Cancel class</button>` : '')}
       ${isAdmin() && !c.custom && !c.cancelled ? `<button class="d2-btn danger ghost" id="detRemoveSeries">Remove series</button>` : ''}
+      ${!isAdmin() && !canEditClass(c) ? `<p class="d2-hint" style="margin:0">${esc(c.instructor || 'Another instructor')} teaches this class, so only the studio can change it.</p>` : ''}
     </div>`;
   el.querySelectorAll('.wv-view').forEach(b =>
     b.addEventListener('click', () => openWaiverView(b.dataset.em)));
@@ -311,6 +323,17 @@ function renderDetail() {
       : 'Cancel this class? It will come off the public timetable.';
     if (!confirm(msg)) return;
     try {
+      // instructors have no write access to bookings, so their cancellation
+      // runs entirely in the database: marker, bookings, refunds, in order
+      if (!isAdmin()) {
+        await ppApi('rpc/cancel_class_as_staff', {
+          method: 'POST',
+          body: JSON.stringify({ p_date: iso(c.date), p_time: c.time, p_reason: '' }),
+        });
+        selectedClass = null;
+        location.href = location.pathname + '?page=schedule';
+        return;
+      }
       // cancel first so every member (including paid) gets the cancellation
       // text while their booking is still active, then refund the paid ones
       await Store.cancelClass(iso(c.date), c.time, { custom: c.custom });
@@ -450,7 +473,7 @@ function renderBookings() {
       <td>${esc(b.cls.t.name)}</td>
       <td class="ct">${fmtDay.format(b.cls.date)} ${fmtDate.format(b.cls.date)} · ${b.cls.time}</td>
       <td><span class="d2-tag ${(b.source || 'Online') === 'Online' ? 'online' : ''}">${esc(b.source || 'Online')}</span>${b.paidWith === 'credit' ? '<br><span class="d2-tag" style="margin-top:5px">Credit</span>' : b.paid ? `<br><span class="d2-tag" style="margin-top:5px">Paid ${gbp(b.amount)}</span>` : ''}</td>
-      <td class="rm"><button class="d2-x" data-id="${b.classId}" data-bid="${b.id}" title="Remove booking"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M5 5l14 14M19 5L5 19"/></svg></button></td>
+      <td class="rm">${isAdmin() ? `<button class="d2-x" data-id="${b.classId}" data-bid="${b.id}" title="Remove booking"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M5 5l14 14M19 5L5 19"/></svg></button>` : ''}</td>
     </tr>`).join('');
   $('bkEmpty').hidden = rows.length > 0;
   $('bkTable').querySelector('thead').style.display = rows.length ? '' : 'none';
@@ -795,6 +818,13 @@ $('rptRange').querySelectorAll('button').forEach(b =>
    SETTINGS
    ============================================================ */
 function renderSettings() {
+  // instructors get the password form and nothing else
+  if (!isAdmin()) {
+    $('setStudio').hidden = true;
+    if ($('instrCard')) $('instrCard').hidden = true;
+    $('pwEmail').textContent = Auth.email() || '';
+    return;
+  }
   $('typeList').innerHTML = Object.entries(CLASS_TYPES).map(([k, t]) => `
     <div class="d2-type ${t.custom ? 'custom' : ''}">
       <div class="hd"><b>${esc(t.name)}</b><span class="d2-tag">${esc(t.level)}</span></div>
@@ -1112,7 +1142,7 @@ function openMove(c) {
   $('mvTime').value = c.time;
   $('mvInstr').innerHTML = instrOptions(c.instructor || '');
   // custom one-offs have no recurring series to apply to
-  $('mvScope').style.display = c.custom ? 'none' : '';
+  $('mvScope').style.display = (c.custom || !isAdmin()) ? 'none' : '';
   $('mvAllLabel').textContent = `All future ${fmtDay.format(c.date)} ${c.time} classes`;
   $('mvForm').mvScopeR.value = 'one';
   $('mvHint').textContent = 'Members already booked are moved with the class and get a text about the change.';
@@ -1124,7 +1154,7 @@ $('mvForm').addEventListener('submit', async e => {
   const c = mvClassInfo;
   const newTime = $('mvTime').value;
   const instr = $('mvInstr').value.trim();
-  const scope = c.custom ? 'one' : e.target.mvScopeR.value;
+  const scope = (c.custom || !isAdmin()) ? 'one' : e.target.mvScopeR.value;
   const btn = e.target.querySelector('button[type=submit]');
   if (newTime === c.time && (instr || '') === (c.instructor || '')) { closeDrawers(); return; }
   btn.disabled = true;
@@ -1221,13 +1251,23 @@ ppReady
     await Instructors.load().catch(() => {});
     applyRole();
     await Store.loadBookings();
+    // an instructor only reads their own classes' bookings, which would
+    // leave every other class showing 0 booked: take the counts from the
+    // public tally instead
+    if (!isAdmin()) await Store.refreshCounts().catch(() => {});
     await loadWaivers();
     return loadEnquiries();
   })
   .then(() => {
     goto(TITLES[startPage] ? startPage : 'overview');
     setInterval(async () => {
-      try { await Store.loadBookings(); await loadWaivers(); await loadEnquiries(); render(); } catch {}
+      try {
+        await Store.loadBookings();
+        if (!isAdmin()) await Store.refreshCounts().catch(() => {});
+        await loadWaivers();
+        if (isAdmin()) await loadEnquiries();
+        render();
+      } catch {}
     }, 60000);
   })
   .catch(err => {

@@ -655,13 +655,18 @@ const Settings = {
 // 'admin' | 'instructor' | 'member' | null (not signed in / not loaded yet).
 // The database enforces all of this; PP_ROLE only shapes the UI.
 let PP_ROLE = null;
+let PP_INSTRUCTOR = null;   // the instructor this login teaches as, if any
 const INSTRUCTORS = [];  // { id, name, email, phone, rate, active }
 
 const Instructors = {
   active() { return INSTRUCTORS.filter(i => i.active); },
   byName(name) { return name ? INSTRUCTORS.find(i => i.name.toLowerCase() === String(name).toLowerCase()) : null; },
   async load() {
-    const rows = await ppApi('instructors?select=*&order=name.asc');
+    // pay rates and contact details are admin-only; instructors get a
+    // names-only view, which is all the class dropdowns need
+    const rows = PP_ROLE === 'admin'
+      ? await ppApi('instructors?select=*&order=name.asc')
+      : await ppApi('instructor_names?select=*&order=name.asc');
     INSTRUCTORS.length = 0;
     rows.forEach(r => INSTRUCTORS.push({
       id: r.id, name: r.name, email: r.email || '', phone: r.phone || '',
@@ -694,11 +699,17 @@ const Instructors = {
 
 // a signed-in user with no staff_roles row is a member
 async function loadRole() {
-  if (!Auth.token()) { PP_ROLE = null; return PP_ROLE; }
+  if (!Auth.token()) { PP_ROLE = null; PP_INSTRUCTOR = null; return PP_ROLE; }
   try {
     const rows = await ppApi('staff_roles?select=role');
     PP_ROLE = rows[0]?.role || 'member';
   } catch { PP_ROLE = 'member'; }
+  // which instructor this login is, so the dashboard can show them their own
+  // classes. The database decides what they may actually touch.
+  PP_INSTRUCTOR = null;
+  if (PP_ROLE === 'instructor') {
+    try { PP_INSTRUCTOR = await ppApi('rpc/pp_my_instructor_name', { method: 'POST', body: '{}' }); } catch {}
+  }
   return PP_ROLE;
 }
 const loadStaffRole = loadRole;
