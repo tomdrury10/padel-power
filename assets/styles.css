@@ -1889,7 +1889,7 @@ nav.links a{white-space:nowrap}
 
 /* ---------- Studio Manager: month view + move members ---------- */
 .d2-mg{min-width:0}
-.d2-mg-head{display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--ln);position:sticky;top:67px;z-index:6;background:var(--srf);border-radius:14px 14px 0 0}
+.d2-mg-head{display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--ln);background:var(--srf);border-radius:14px 14px 0 0}
 .d2-mg-head span{padding:9px 6px;text-align:center;font-family:var(--mono);font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--tx3)}
 .d2-mg-body{display:grid;grid-template-columns:repeat(7,1fr)}
 .d2-mg-day{min-height:108px;padding:6px;border-left:1px solid var(--ln);border-top:1px solid var(--ln);display:flex;flex-direction:column;gap:3px}

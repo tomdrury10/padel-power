@@ -1303,17 +1303,18 @@ $('mmForm').addEventListener('submit', async e => {
   const skipped = (r.skipped || []).map(x => x.name).join(', ');
   const left = Store.attendees(c.id).length;
   let msg = `${r.moved} moved and texted.` + (skipped ? ` Not moved (already booked there): ${skipped}.` : '');
+  // everyone has gone: the class comes off the timetable by itself. Nobody
+  // is booked on it any more so no member gets a cancellation text (they
+  // already had the reschedule one); the instructor still does.
   if (!left && !c.cancelled) {
-    if (confirm(msg + `\n\nThe ${c.time} class is now empty. Cancel it so it comes off the timetable?`)) {
-      try {
-        if (isAdmin()) await Store.cancelClass(iso(c.date), c.time, { custom: c.custom });
-        else await ppApi('rpc/cancel_class_as_staff', { method: 'POST', body: JSON.stringify({ p_date: iso(c.date), p_time: c.time, p_reason: 'members moved' }) });
-        if (c.custom) selectedClass = null;
-      } catch { alert('The members moved, but the empty class could not be cancelled. Cancel it from the class panel.'); }
-    }
-  } else {
-    alert(msg);
+    try {
+      if (isAdmin()) await Store.cancelClass(iso(c.date), c.time, { custom: c.custom, reason: 'members moved' });
+      else await ppApi('rpc/cancel_class_as_staff', { method: 'POST', body: JSON.stringify({ p_date: iso(c.date), p_time: c.time, p_reason: 'members moved' }) });
+      if (c.custom) selectedClass = null;
+      msg += ` The ${c.time} class was empty, so it has been cancelled and the instructor told.`;
+    } catch { msg += ' The empty class could not be cancelled automatically. Cancel it from the class panel.'; }
   }
+  alert(msg);
   selectedClass = to;
   refresh();
 });
