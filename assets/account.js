@@ -11,6 +11,8 @@
   const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const fmtWhen = d => new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }).format(d);
   const fmtLong = d => new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }).format(d);
+  // where to go after signing in: only a path on this site, never a full URL
+  const nextPath = () => { const n = q.get('next') || ''; return /^\/[^/\\]/.test(n) ? n : location.pathname; };
   const show = id => {
     ['acLoading', 'acAuth', 'acRecover', 'acTokenReset', 'acHome'].forEach(x => { $(x).hidden = x !== id; });
   };
@@ -51,7 +53,7 @@
       err.hidden = true; btn.disabled = true; btn.textContent = 'Signing in…';
       try {
         await Auth.signIn(f.siEmail.value.trim(), f.siPass.value);
-        location.replace(location.pathname);
+        location.replace(nextPath());
       } catch (ex) {
         btn.disabled = false; btn.innerHTML = 'Sign in <span class="arr">→</span>';
         const m = String(ex.message);
@@ -74,7 +76,7 @@
           notice(`<h3>Check your inbox</h3><p>We have sent a confirmation link to <b>${esc(f.suEmail.value.trim())}</b>. Tap it and you will land back here, signed in.</p><p class="dim">No email after a minute? Check your junk folder, or message us on WhatsApp.</p>`);
           return;
         }
-        location.replace(location.pathname);
+        location.replace(nextPath());
       } catch (ex) {
         btn.disabled = false; btn.innerHTML = 'Create account <span class="arr">→</span>';
         const m = String(ex.message);

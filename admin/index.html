@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="icon" type="image/png" href="../assets/favicon.png">
-<link rel="stylesheet" href="../assets/styles.css?v=41">
+<link rel="stylesheet" href="../assets/styles.css?v=42">
 </head>
 <body class="d2">
 
@@ -42,6 +42,10 @@
       <button data-page="reports" id="navReports">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 20V10M10 20V4M16 20v-8M21 20H3"/></svg>
         Reports
+      </button>
+      <button data-page="leagues">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 21h8M12 17v4M6 3h12v5a6 6 0 01-12 0V3zM6 5H3v2a4 4 0 004 4M18 5h3v2a4 4 0 01-4 4"/></svg>
+        Leagues
       </button>
       <button data-page="settings">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.34 1.87l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.7 1.7 0 00-1.87-.34 1.7 1.7 0 00-1 1.55V21a2 2 0 11-4 0v-.09a1.7 1.7 0 00-1-1.55 1.7 1.7 0 00-1.87.34l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.7 1.7 0 00.34-1.87 1.7 1.7 0 00-1.55-1H3a2 2 0 110-4h.09a1.7 1.7 0 001.55-1 1.7 1.7 0 00-.34-1.87l-.06-.06a2 2 0 112.83-2.83l.06.06a1.7 1.7 0 001.87.34h0a1.7 1.7 0 001-1.55V3a2 2 0 114 0v.09a1.7 1.7 0 001 1.55h0a1.7 1.7 0 001.87-.34l.06-.06a2 2 0 112.83 2.83l-.06.06a1.7 1.7 0 00-.34 1.87v0a1.7 1.7 0 001.55 1H21a2 2 0 110 4h-.09a1.7 1.7 0 00-1.55 1z"/></svg>
@@ -194,6 +198,54 @@
           <tbody></tbody>
         </table>
         <p class="d2-empty" id="rptEmpty" hidden>No classes in this period.</p>
+      </div>
+    </section>
+
+    <!-- ===== SETTINGS ===== -->
+    <!-- ===== LEAGUES ===== -->
+    <section class="d2-page" id="pgLeagues" hidden>
+      <div class="d2-cols">
+        <div class="d2-card">
+          <div class="d2-card-head"><h2>League setup</h2></div>
+          <p class="d2-sub">Registration stays closed until a league has both prices, a start date and a number of weeks. Prices are per player per week and are fixed for a player once they register.</p>
+          <div id="lgLeagueList"></div>
+        </div>
+        <div class="d2-card">
+          <div class="d2-card-head"><h2>Club members</h2></div>
+          <p class="d2-sub">Players on this list get the member price. Matched by email or mobile at the moment they register. Anyone not on it pays the non-member price and can be switched by an admin before their first payment.</p>
+          <form class="d2-form" id="lgMemberAdd">
+            <div class="d2-form-row">
+              <input name="mEmail" type="email" placeholder="Email">
+              <input name="mPhone" type="tel" placeholder="Mobile">
+            </div>
+            <div class="d2-form-row">
+              <input name="mNote" type="text" placeholder="Note, e.g. name" maxlength="60">
+              <button class="d2-btn primary" type="submit">Add member</button>
+            </div>
+          </form>
+          <div id="lgMemberList" class="d2-types"></div>
+        </div>
+      </div>
+      <div class="d2-toolbar">
+        <div class="d2-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+          <input id="lgSearch" type="search" placeholder="Search player, email or mobile">
+        </div>
+        <div class="d2-filters" id="lgLeagueFilter"><button class="on" data-league="">All leagues</button></div>
+        <div class="d2-filters" id="lgStatusFilter">
+          <button class="on" data-status="">All</button>
+          <button data-status="Awaiting partner">Awaiting partner</button>
+          <button data-status="Ready for Playtomic">Ready for Playtomic</button>
+          <button data-status="Payment failed">Payment failed</button>
+          <button data-status="Card not saved">Card not saved</button>
+        </div>
+      </div>
+      <div class="d2-card">
+        <table class="d2-table" id="lgTable">
+          <thead><tr><th>Player</th><th>League</th><th>Membership</th><th>Weekly</th><th>Partner</th><th>Status</th><th>Card</th><th>Playtomic</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <p class="d2-empty" id="lgEmpty" hidden>No registrations yet.</p>
       </div>
     </section>
 
@@ -413,6 +465,7 @@
 
 
 <script src="../assets/pilates-core.js?v=23"></script>
-<script src="../assets/admin.js?v=30"></script>
+<script src="../assets/admin.js?v=31"></script>
+<script src="../assets/admin-leagues.js?v=1"></script>
 </body>
 </html>

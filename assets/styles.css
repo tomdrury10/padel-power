@@ -1816,3 +1816,31 @@ nav.links a{white-space:nowrap}
 .rs-how label{display:flex;align-items:center;gap:8px;cursor:pointer;font-family:var(--display);font-size:14px;color:var(--paper-dim);text-transform:none;letter-spacing:0;margin:0}
 .rs-how input{width:16px;height:16px;accent-color:var(--blue);cursor:pointer;flex:none;margin:0}
 .rs-how input:checked+span{color:var(--paper)}
+
+/* ---------- league registration ---------- */
+.lg-wrap .ac-authwrap{padding-top:40px}
+.lg-btns{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px}
+.lg-btns .btn{flex:1 1 auto;justify-content:center}
+.lg-summary{display:grid;grid-template-columns:auto 1fr;gap:8px 18px;margin:14px 0 18px;font-size:15px}
+.lg-summary dt{color:var(--muted,#6b6f76);font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.06em;text-transform:uppercase;align-self:center}
+.lg-summary dd{margin:0;font-weight:600}
+.lg-summary dd.big{font-size:30px;font-weight:800;letter-spacing:-.02em}
+.lg-consent{align-items:flex-start;margin:6px 0 14px;font-size:14px;line-height:1.5}
+.lg-consent input{margin-top:4px}
+.lg-reg{padding:16px 0;border-top:1px solid rgba(0,0,0,.08)}
+.lg-reg:first-child{border-top:0;padding-top:0}
+.lg-reg h4{margin:0 0 4px;font-size:18px}
+.lg-reg p{margin:4px 0;font-size:14px}
+.lg-pill{display:inline-block;padding:3px 10px;border-radius:999px;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;background:#eef2f6}
+.lg-pill.good{background:#e3f7e8}.lg-pill.warn{background:#fff3d6}.lg-pill.bad{background:#fde2e2}
+.lg-share{display:flex;gap:8px;margin-top:8px}
+.lg-share input{flex:1;font-size:13px;padding:10px 12px;border:1px solid rgba(0,0,0,.15);border-radius:10px}
+.d2-league{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;padding:14px 0;border-top:1px solid rgba(0,0,0,.08)}
+.d2-league:first-child{border-top:0}
+.d2-league h4{grid-column:1 / -1;margin:0;font-size:15px;display:flex;justify-content:space-between;align-items:center}
+.d2-league label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:#6b6f76}
+.d2-league label.wide{grid-column:1 / -1}
+.d2-league input[type=text],.d2-league input[type=number],.d2-league input[type=date],.d2-league input[type=url]{padding:8px 10px;border:1px solid rgba(0,0,0,.15);border-radius:8px;font:inherit;font-size:14px}
+.d2-league .d2-form-row{grid-column:1 / -1;justify-content:space-between;align-items:center}
+.d2-table td.lg-status .lg-pill{white-space:nowrap}
+.d2-table select.lg-act{font:inherit;font-size:13px;padding:5px 8px;border-radius:8px;border:1px solid rgba(0,0,0,.15)}

@@ -73,12 +73,12 @@ function instrOptions(selected) {
 }
 
 /* ---------- navigation ---------- */
-const TITLES = { overview: 'Overview', schedule: 'Schedule', bookings: 'Bookings', enquiries: 'Enquiries', reports: 'Reports', settings: 'Settings' };
+const TITLES = { overview: 'Overview', schedule: 'Schedule', bookings: 'Bookings', enquiries: 'Enquiries', reports: 'Reports', leagues: 'Leagues', settings: 'Settings' };
 function goto(p) {
   if (p === 'reports' && !isAdmin()) p = 'overview';
   page = p;
   document.querySelectorAll('.d2-nav button').forEach(b => b.classList.toggle('on', b.dataset.page === p));
-  ['Overview', 'Schedule', 'Bookings', 'Enquiries', 'Reports', 'Settings'].forEach(n => { $('pg' + n).hidden = n.toLowerCase() !== p; });
+  ['Overview', 'Schedule', 'Bookings', 'Enquiries', 'Reports', 'Leagues', 'Settings'].forEach(n => { $('pg' + n).hidden = n.toLowerCase() !== p; });
   $('pageTitle').textContent = TITLES[p];
   render();
 }
@@ -91,6 +91,11 @@ function render() {
   if (page === 'bookings') renderBookings();
   if (page === 'enquiries') renderEnquiries();
   if (page === 'reports') renderReports();
+  if (page === 'leagues' && typeof renderLeagues === 'function') {
+    const a = document.activeElement;
+    if (a && $('pgLeagues').contains(a) && ['INPUT', 'TEXTAREA', 'SELECT'].includes(a.tagName)) return;
+    renderLeagues();
+  }
   if (page === 'settings') {
     // don't wipe half-typed edits when the 60s poll re-renders
     const a = document.activeElement;
