@@ -75,6 +75,10 @@ function applyRole() {
   document.querySelectorAll('.d2-nav button').forEach(b => {
     b.hidden = !INSTRUCTOR_PAGES.includes(b.dataset.page);
   });
+  // a group whose every item is hidden loses its heading too
+  document.querySelectorAll('.d2-navgroup').forEach(g => {
+    g.hidden = ![...g.querySelectorAll('button')].some(b => !b.hidden);
+  });
 }
 // options for an instructor dropdown; keeps a legacy free-text name selectable
 function instrOptions(selected) {
