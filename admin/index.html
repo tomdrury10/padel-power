@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="icon" type="image/png" href="../assets/favicon.png">
-<link rel="stylesheet" href="../assets/styles.css?v=47">
+<link rel="stylesheet" href="../assets/styles.css?v=45">
 </head>
 <body class="d2">
 
@@ -125,6 +125,10 @@
           <button class="d2-btn ghost" id="wkToday">Today</button>
           <button class="d2-icon" id="wkNext" aria-label="Next week"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M9 6l6 6-6 6"/></svg></button>
           <span class="d2-wklabel" id="wkLabel"></span>
+        </div>
+        <div class="d2-filters" id="calViewToggle">
+          <button class="on" data-calview="week">Week</button>
+          <button data-calview="month">Month</button>
         </div>
         <button class="d2-btn ghost" id="addClassBtn">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="14" height="14"><path d="M12 5v14M5 12h14"/></svg>
@@ -464,6 +468,23 @@
   </div>
 </aside>
 <!-- ===== MOVE / EDIT CLASS DRAWER ===== -->
+<aside class="d2-drawer" id="mmDrawer" role="dialog" aria-modal="true">
+  <div class="d2-dr-head"><span>Move members</span>
+    <button class="d2-icon" id="mmClose" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
+  </div>
+  <div class="d2-dr-body">
+    <div class="d2-dr-class"><b>From</b><span id="mmFrom"></span></div>
+    <form id="mmForm">
+      <label class="d2-label">Who is moving</label>
+      <div class="d2-mm-list" id="mmList"></div>
+      <label class="d2-label" for="mmTo">To which class</label>
+      <select class="d2-input" id="mmTo" required></select>
+      <p class="d2-hint" id="mmHint"></p>
+      <button class="d2-btn primary block" type="submit" id="mmGo">Move and text them</button>
+      <p class="d2-hint">Their booking, payment or credit moves with them. Not enough room in one class? Move some here, then open this again for the rest.</p>
+    </form>
+  </div>
+</aside>
 <aside class="d2-drawer" id="mvDrawer" role="dialog" aria-modal="true">
   <div class="d2-dr-head"><span>Edit class</span>
     <button class="d2-icon" id="mvClose" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
@@ -490,8 +511,8 @@
 </div>
 
 
-<script src="../assets/pilates-core.js?v=24"></script>
-<script src="../assets/admin.js?v=35"></script>
+<script src="../assets/pilates-core.js?v=25"></script>
+<script src="../assets/admin.js?v=36"></script>
 <script src="../assets/admin-guides.js?v=2"></script>
 <script src="../assets/admin-leagues.js?v=3"></script>
 </body>

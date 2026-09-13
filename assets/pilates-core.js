@@ -447,6 +447,17 @@ const Store = {
     });
   },
 
+  // staff: move chosen bookings onto another class. The database checks
+  // room, permissions and doubles, and texts every member it moves.
+  async moveBookings(bookingIds, toClassId) {
+    const r = await ppApi('rpc/move_bookings', {
+      method: 'POST',
+      body: JSON.stringify({ p_ids: bookingIds, p_to_class_id: toClassId }),
+    });
+    await this.loadBookings();
+    return r;
+  },
+
   // staff dashboard: load every active booking (names + contacts)
   async loadBookings() {
     const rows = await ppApi('bookings?cancelled_at=is.null&order=created_at.asc&select=*');

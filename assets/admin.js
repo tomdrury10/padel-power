@@ -17,6 +17,8 @@ function addDays(d, n) { const x = new Date(d); x.setDate(x.getDate() + n); retu
 /* ---------- state ---------- */
 let page = 'overview';
 let weekOffset = 0;
+let monthOffset = 0;        // schedule month view, 0 = this month
+let calView = 'week';       // 'week' | 'month'
 { // before opening day, land the schedule on the opening week
   const opening = new Date(RULES.openingDate + 'T00:00:00');
   if (startOfToday() < opening) weekOffset = Math.floor((opening - startOfToday()) / (7 * 86400000));
@@ -206,6 +208,9 @@ function typeClass(type) {
 }
 
 function renderSchedule() {
+  document.querySelectorAll('[data-calview]').forEach(b => b.classList.toggle('on', b.dataset.calview === calView));
+  $('addClassBtn').hidden = !isAdmin();
+  if (calView === 'month') return renderMonth();
   const dates = weekDates();
   $('wkLabel').textContent = `${fmtDate.format(dates[0])} to ${fmtDate.format(dates[6])}`;
   $('wkPrev').disabled = weekOffset <= 0;
@@ -252,6 +257,49 @@ function renderSchedule() {
 }
 function shortName(name) { return name.replace(/^Reformer\s+/i, ''); }
 
+/* ---------- month view ----------
+   Seven columns, Monday first, every class as a chip with its count.
+   Days before today are muted and empty: one-offs and cancellations are
+   only loaded from today forwards, so drawing the past from the weekly
+   template would show classes that never ran. */
+function renderMonth() {
+  const today = startOfToday();
+  const first = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
+  const last = new Date(first.getFullYear(), first.getMonth() + 1, 0);
+  $('wkLabel').textContent = new Intl.DateTimeFormat('en-GB', { month: 'long', year: 'numeric' }).format(first);
+  $('wkPrev').disabled = monthOffset <= 0;
+  const todayIso = iso(today);
+  const lead = (first.getDay() + 6) % 7;           // days shown from the previous month
+  const start = addDays(first, -lead);
+  const cells = [];
+  for (let i = 0; i < 42; i++) {
+    const d = addDays(start, i);
+    if (i >= 35 && d > last) break;
+    const inMonth = d.getMonth() === first.getMonth();
+    const past = d < today;
+    const chips = past ? '' : dayClasses(d).map(c => {
+      const st = statusOf(c);
+      return `<button class="d2-mev ${typeClass(c.type)} ${c.cancelled ? 'off' : ''} ${selectedClass === c.id ? 'sel' : ''}" data-id="${c.id}" title="${esc(c.t.name)}${c.instructor ? ' · ' + esc(c.instructor) : ''}">
+        <span class="t">${c.time}</span><span class="c ${st.key}">${c.cancelled ? 'off' : c.count + '/' + RULES.maxRiders}</span></button>`;
+    }).join('');
+    cells.push(`<div class="d2-mg-day ${inMonth ? '' : 'out'} ${past ? 'past' : ''} ${iso(d) === todayIso ? 'today' : ''}">
+      <span class="dn">${d.getDate()}</span>${chips}</div>`);
+  }
+  $('calGrid').innerHTML = `
+    <div class="d2-mg">
+      <div class="d2-mg-head">${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(n => `<span>${n}</span>`).join('')}</div>
+      <div class="d2-mg-body">${cells.join('')}</div>
+    </div>`;
+  $('calLegend').innerHTML = Object.entries(CLASS_TYPES).map(([k, t]) =>
+    `<span class="d2-leg-item ${typeClass(k)}"><i></i>${esc(shortName(t.name))}</span>`).join('');
+  $('calGrid').querySelectorAll('.d2-mev').forEach(b =>
+    b.addEventListener('click', () => { selectedClass = b.dataset.id; renderSchedule(); }));
+  renderDetail();
+}
+document.querySelectorAll('[data-calview]').forEach(b => b.addEventListener('click', () => {
+  calView = b.dataset.calview; renderSchedule();
+}));
+
 function renderDetail() {
   const el = $('classDetail');
   const c = selectedClass && findClass(selectedClass);
@@ -281,6 +329,7 @@ function renderDetail() {
     <div class="d2-det-actions">
       ${!c.cancelled && free > 0 && isAdmin() ? `<button class="d2-btn primary" id="detAdd">+ New booking</button>` : ''}
       ${!c.cancelled && canEditClass(c) ? `<button class="d2-btn ghost" id="detEdit">Edit class</button>` : ''}
+      ${!c.cancelled && people.length && canEditClass(c) ? `<button class="d2-btn ghost" id="detMoveMembers">Move members</button>` : ''}
       ${c.cancelled
         ? (isAdmin() ? `<button class="d2-btn ghost" id="detRestore">Put class back on</button>` : '')
         : (canEditClass(c) ? `<button class="d2-btn danger" id="detCancelClass">Cancel class</button>` : '')}
@@ -313,6 +362,8 @@ function renderDetail() {
 
   const edit = $('detEdit');
   if (edit) edit.addEventListener('click', () => openMove(c));
+  const mv = $('detMoveMembers');
+  if (mv) mv.addEventListener('click', () => openMoveMembers(c));
 
   const cancelCls = $('detCancelClass');
   if (cancelCls) cancelCls.addEventListener('click', async () => {
@@ -463,9 +514,13 @@ $('calGrid').addEventListener('pointerup', async e => {
 });
 $('calGrid').addEventListener('pointercancel', endDrag);
 
-$('wkPrev').addEventListener('click', () => { if (weekOffset > 0) { weekOffset--; renderSchedule(); } });
-$('wkNext').addEventListener('click', () => { weekOffset++; renderSchedule(); });
-$('wkToday').addEventListener('click', () => { weekOffset = 0; renderSchedule(); });
+$('wkPrev').addEventListener('click', () => {
+  if (calView === 'month') { if (monthOffset > 0) monthOffset--; }
+  else if (weekOffset > 0) weekOffset--;
+  renderSchedule();
+});
+$('wkNext').addEventListener('click', () => { if (calView === 'month') monthOffset++; else weekOffset++; renderSchedule(); });
+$('wkToday').addEventListener('click', () => { weekOffset = 0; monthOffset = 0; renderSchedule(); });
 
 /* ============================================================
    BOOKINGS — searchable table
@@ -1190,6 +1245,77 @@ $('mvForm').addEventListener('submit', async e => {
   }
   // bookings, custom classes and cancellations all changed server-side: reload clean
   location.href = location.pathname + '?page=schedule';
+});
+
+/* --- move members drawer --- */
+let mmClass = null;
+function openMoveMembers(c) {
+  mmClass = c;
+  const people = Store.attendees(c.id);
+  $('mmFrom').textContent = `${c.t.name} · ${fmtFull.format(c.date)} · ${c.time}`;
+  $('mmList').innerHTML = people.map(p => `
+    <label class="d2-check"><input type="checkbox" name="mmWho" value="${p.id}" checked>
+      <span><b>${esc(p.name)}</b> <small>${esc(p.phone || '')}${payLabel(p)}</small></span></label>`).join('');
+  // any live class in the booking window with a bed free, soonest first
+  const now = new Date();
+  const dests = upcoming(RULES.windowDays)
+    .filter(x => x.id !== c.id && !x.cancelled && classStart(x.id) > now && x.count < RULES.maxRiders);
+  $('mmTo').innerHTML = '<option value="">Choose a class</option>' + dests.map(x =>
+    `<option value="${x.id}" data-free="${RULES.maxRiders - x.count}">${fmtDay.format(x.date)} ${fmtDate.format(x.date)} · ${x.time} · ${esc(x.instructor || shortName(x.t.name))} · ${RULES.maxRiders - x.count} free</option>`).join('');
+  const sync = () => {
+    const n = $('mmList').querySelectorAll('input:checked').length;
+    const opt = $('mmTo').selectedOptions[0];
+    const free = opt && opt.dataset.free ? parseInt(opt.dataset.free, 10) : null;
+    $('mmHint').textContent = !n ? 'Tick who is moving.'
+      : free === null ? `${n} selected. Pick where they are going.`
+      : n > free ? `${n} selected but only ${free} free there. Untick some, or move the rest to another class after.`
+      : `${n} will move and each gets a text with the new time.`;
+    $('mmGo').disabled = !n || free === null || n > free;
+  };
+  $('mmList').querySelectorAll('input').forEach(i => i.addEventListener('change', sync));
+  $('mmTo').onchange = sync;
+  sync();
+  openDrawer('mmDrawer');
+}
+$('mmClose').addEventListener('click', closeDrawers);
+$('mmForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const c = mmClass;
+  const ids = [...$('mmList').querySelectorAll('input:checked')].map(i => i.value);
+  const to = $('mmTo').value;
+  if (!ids.length || !to) return;
+  const btn = $('mmGo'); btn.disabled = true; btn.textContent = 'Moving…';
+  let r;
+  try {
+    r = await Store.moveBookings(ids, to);
+  } catch (err) {
+    btn.disabled = false; btn.textContent = 'Move and text them';
+    const m = String(err.message);
+    alert(m.includes('class_full') ? 'Not enough beds free in that class any more. Pick another.'
+      : m.includes('class_in_past') ? 'That class has already started.'
+      : m.includes('class_cancelled') ? 'That class is cancelled.'
+      : m.includes('forbidden') ? 'You can only move members off your own classes.'
+      : 'Could not move them: ' + m);
+    return;
+  }
+  btn.textContent = 'Move and text them';
+  closeDrawers();
+  const skipped = (r.skipped || []).map(x => x.name).join(', ');
+  const left = Store.attendees(c.id).length;
+  let msg = `${r.moved} moved and texted.` + (skipped ? ` Not moved (already booked there): ${skipped}.` : '');
+  if (!left && !c.cancelled) {
+    if (confirm(msg + `\n\nThe ${c.time} class is now empty. Cancel it so it comes off the timetable?`)) {
+      try {
+        if (isAdmin()) await Store.cancelClass(iso(c.date), c.time, { custom: c.custom });
+        else await ppApi('rpc/cancel_class_as_staff', { method: 'POST', body: JSON.stringify({ p_date: iso(c.date), p_time: c.time, p_reason: 'members moved' }) });
+        if (c.custom) selectedClass = null;
+      } catch { alert('The members moved, but the empty class could not be cancelled. Cancel it from the class panel.'); }
+    }
+  } else {
+    alert(msg);
+  }
+  selectedClass = to;
+  refresh();
 });
 
 /* --- add class drawer --- */

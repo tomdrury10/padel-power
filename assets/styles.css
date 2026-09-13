@@ -1886,3 +1886,28 @@ nav.links a{white-space:nowrap}
   .d2-navgroup{flex-direction:row;align-items:center;gap:4px;margin-top:0}
   .d2-navlabel{display:none}
 }
+
+/* ---------- Studio Manager: month view + move members ---------- */
+.d2-mg{min-width:0}
+.d2-mg-head{display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--ln);position:sticky;top:67px;z-index:6;background:var(--srf);border-radius:14px 14px 0 0}
+.d2-mg-head span{padding:9px 6px;text-align:center;font-family:var(--mono);font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--tx3)}
+.d2-mg-body{display:grid;grid-template-columns:repeat(7,1fr)}
+.d2-mg-day{min-height:108px;padding:6px;border-left:1px solid var(--ln);border-top:1px solid var(--ln);display:flex;flex-direction:column;gap:3px}
+.d2-mg-day:nth-child(7n+1){border-left:none}
+.d2-mg-day .dn{font-size:11.5px;font-weight:680;color:var(--tx);margin-bottom:2px}
+.d2-mg-day.out .dn{color:var(--tx3);font-weight:500}
+.d2-mg-day.past{background:repeating-linear-gradient(135deg,transparent 0 6px,rgba(0,0,0,.025) 6px 7px)}
+.d2-mg-day.past .dn{color:var(--tx3)}
+.d2-mg-day.today{background-color:rgba(43,166,232,.06)}
+.d2-mg-day.today .dn{color:var(--fullc)}
+.d2-mev{display:flex;justify-content:space-between;gap:6px;align-items:center;width:100%;text-align:left;
+  border:1px solid transparent;border-left:3px solid var(--lg,#999);border-radius:6px;padding:3px 6px;cursor:pointer;
+  background:var(--lgbg,#eee);color:var(--lgtx,#333);font-family:var(--mono);font-size:9.5px;line-height:1.3}
+.d2-mev .c{opacity:.85}
+.d2-mev.off{opacity:.5;text-decoration:line-through}
+.d2-mev.sel{outline:2px solid var(--fullc);outline-offset:1px}
+.d2-mev:hover{filter:brightness(.97)}
+.d2-mm-list{display:flex;flex-direction:column;gap:6px;margin:6px 0 14px;max-height:280px;overflow:auto}
+.d2-mm-list .d2-check{align-items:flex-start}
+.d2-mm-list small{display:block;color:var(--tx2);font-weight:400;font-size:11.5px}
+@media (max-width:900px){.d2-mg-day{min-height:80px}.d2-mev .c{display:none}}

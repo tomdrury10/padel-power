@@ -17,7 +17,7 @@ spaces removed. Dates are sent as `date` (YYYY-MM-DD), `day` (Monday) and
 | `class_cancelled` | trigger on `cancelled_classes` insert, once per live booking | member SMS; wording depends on `reason` |
 | `instructor_class_cancelled` | trigger on `cancelled_classes` insert, once | instructor SMS, or email to Tom if no mobile on file |
 | `instructor_class_moved` | same trigger when `reason` starts `moved to` | instructor SMS with `old_time` and `time`, or email to Tom |
-| `class_moved` | `move_class_occurrence`, once per moved booking | member SMS with `old_time`, `time`, cancel link |
+| `class_moved` | `move_class_occurrence` (whole class) or `move_bookings` (chosen members), once per moved booking | member SMS with `old_date_pretty`, `old_time`, `date_pretty`, `time`, `same_day`, cancel link |
 | `class_reminder` | `send_class_reminders` cron, day before | member SMS |
 | `pack_purchased` | stripe-webhook after a pack payment | member SMS with `credits`, `expires_pretty`, `account_url` |
 | `enquiry_created` | trigger on `enquiries` insert | email to Joe and Grace, cc Tom |
