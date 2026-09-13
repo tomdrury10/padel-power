@@ -61,8 +61,8 @@
       const err = $('lgError'); err.hidden = true;
       const l = leagues.find(x => x.id === sel.value);
       if (!l) return;
-      if (!/^https:\/\/([a-z0-9-]+\.)*playtomic\.(io|com)\/.{3,}/i.test($('lgPlaytomic').value.trim())) {
-        err.textContent = 'That does not look like a Playtomic profile link. It should start with https://app.playtomic.io/ or https://playtomic.io/.';
+      if (!/^https:\/\/([a-z0-9-]+\.)*playtomic\.(io|com)\/profile\/user\/[A-Za-z0-9-]+/i.test($('lgPlaytomic').value.trim())) {
+        err.textContent = 'That does not look like a Playtomic profile link. Open your profile in the Playtomic app, tap Share, and paste the link. It contains /profile/user/.';
         err.hidden = false; return;
       }
       if (!(await phoneReady())) return;

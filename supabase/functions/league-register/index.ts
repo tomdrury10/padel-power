@@ -25,8 +25,8 @@ const ALLOWED_ORIGINS = [SITE, "https://padelpower.uk", "http://localhost:4173",
 const PLAYTOMIC = /^https:\/\/([a-z0-9-]+\.)*playtomic\.(io|com)\/.{3,}$/i;
 // a share link looks like https://app.playtomic.com/profile/user/17020714?utm_...
 // so the id is the path segment after /user/; older links may carry a UUID
-const playerIdFrom = (url: string) =>
-  (url.match(/\/profile\/user\/([A-Za-z0-9-]+)/) || url.match(/\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i) || [null, null])[1];
+// a league or club link pasted by mistake yields no id rather than a wrong one
+const playerIdFrom = (url: string) => (url.match(/\/profile\/user\/([A-Za-z0-9-]+)/) || [null, null])[1];
 
 const CORS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
