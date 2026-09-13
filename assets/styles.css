@@ -1911,3 +1911,9 @@ nav.links a{white-space:nowrap}
 .d2-mm-list .d2-check{align-items:flex-start}
 .d2-mm-list small{display:block;color:var(--tx2);font-weight:400;font-size:11.5px}
 @media (max-width:900px){.d2-mg-day{min-height:80px}.d2-mev .c{display:none}}
+
+/* ---------- photo grids (pilates studio, gym) ---------- */
+.photo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(12px,1.4vw,20px);margin-top:34px}
+.photo-grid img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:16px;display:block;background:#111}
+.photo-grid.six img:first-child{grid-column:span 2;aspect-ratio:8/3.05}
+@media (max-width:760px){.photo-grid{grid-template-columns:repeat(2,1fr)}.photo-grid.six img:first-child{grid-column:span 2;aspect-ratio:16/9}}
