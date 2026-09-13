@@ -1307,7 +1307,7 @@ html.flat img{content-visibility:visible}
   font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--tx3);
   font-weight:500;text-align:left;padding:4px 10px 10px;border-bottom:1px solid var(--ln);
 }
-.d2-table td{padding:10px;border-bottom:1px solid var(--ln);vertical-align:middle}
+.d2-table td{padding:10px;border-bottom:1px solid var(--ln);vertical-align:middle;color:var(--tx)}
 .d2-table tr:last-child td{border-bottom:none}
 .d2-table tbody tr:hover{background:var(--srf2)}
 .d2-table .nm{font-weight:630;color:var(--tx)}
@@ -1612,8 +1612,8 @@ nav.links a{white-space:nowrap}
 /* reports */
 .d2-rpt-row{display:grid;grid-template-columns:minmax(90px,1fr) 120px 44px minmax(120px,1.2fr);gap:10px;align-items:center;padding:10px 2px;border-bottom:1px solid var(--ln)}
 .d2-rpt-row:last-child{border-bottom:none}
-.d2-rpt-row .nm{font-size:13.5px;font-weight:640}
-.d2-rpt-row .pc{font-family:var(--mono);font-size:12px;text-align:right}
+.d2-rpt-row .nm{font-size:13.5px;font-weight:640;color:var(--tx)}
+.d2-rpt-row .pc{font-family:var(--mono);font-size:12px;text-align:right;color:var(--tx2)}
 .d2-rpt-row .ct{font-family:var(--mono);font-size:10.5px;color:var(--tx3);text-align:right}
 @media(max-width:640px){.d2-rpt-row{grid-template-columns:1fr 90px 40px}.d2-rpt-row .ct{display:none}}
 

@@ -360,9 +360,18 @@ function renderDetail() {
     const wd = c.date.getDay();
     const slot = (TIMETABLE[wd] || []).find(s => s[0] === c.time);
     if (!slot) { alert('Could not find the weekly slot for this class.'); return; }
-    if (!confirm(`Remove the ${TT_DAYS[wd]} ${c.time} class from EVERY week?\n\nBookings already made for upcoming dates are NOT cancelled or notified. Cancel those dates first if anyone is booked.\n\nTo take off just this date, use Cancel class instead.`)) return;
-    try { await Settings.removeTimetableSlot(slot[3], wd); selectedClass = null; }
-    catch { alert('Could not remove the series. Please try again.'); }
+    if (!confirm(`Remove the ${TT_DAYS[wd]} ${c.time} class from EVERY week?\n\nEvery upcoming date with bookings is cancelled at the same time: those members get a text, card payments are refunded and class credits go back automatically.\n\nTo take off just this date, use Cancel class instead.`)) return;
+    try {
+      const r = await ppApi('rpc/remove_class_series', {
+        method: 'POST', body: JSON.stringify({ p_slot_id: slot[3] }),
+      });
+      selectedClass = null;
+      const n = r?.cancelled_bookings || 0;
+      if (n) alert(`Series removed. ${n} booking${n === 1 ? '' : 's'} cancelled and notified`
+        + (r.card_refunds ? `, ${r.card_refunds} card refund${r.card_refunds === 1 ? '' : 's'} sent automatically.` : '.'));
+      location.href = location.pathname + '?page=schedule';
+      return;
+    } catch { alert('Could not remove the series. Please try again.'); }
     refresh();
   });
 
