@@ -3,6 +3,8 @@
 //
 // checkout.session.completed, mode=payment ->
 //   metadata.type = "pack"  : create the member's credit pack
+//   metadata.type = "softplay": insert the paid soft play booking; if the
+//                             session filled or was cancelled meanwhile, refund
 //   otherwise               : insert the paid class booking, stamped with
 //                             the member's account. If the class filled up
 //                             between checkout and webhook, refund automatically.
@@ -234,6 +236,29 @@ Deno.serve(async (req) => {
     const body = await res.text();
     if (res.status === 409 || body.includes("credit_packs_session_uidx")) return new Response("already credited", { status: 200 });
     console.error(`pack insert failed: ${res.status} ${body}`);
+    return new Response("retry", { status: 500 });
+  }
+
+  if (m.type === "softplay") {
+    const spBooking = {
+      session_id: m.session_id, user_id: userId, name: m.name || "Unknown",
+      email: m.email || s.customer_email || "", phone: m.phone || "",
+      children: Math.max(1, Math.min(30, parseInt(m.children, 10) || 1)),
+      child_names: m.child_names || null, source: "Online",
+      amount_pence: s.amount_total, stripe_session_id: s.id, payment_intent_id: s.payment_intent,
+      paid_at: new Date().toISOString(), consent_at: new Date().toISOString(),
+    };
+    const res = await insert("softplay_bookings", spBooking);
+    if (res.ok) return new Response("softplay booked", { status: 200 });
+    const body = await res.text();
+    if (res.status === 409 || body.includes("softplay_bookings_session_uidx")) return new Response("already booked", { status: 200 });
+    if (/session_full|session_taken|session_cancelled|session_in_past|already_booked|no_such_session/.test(body)) {
+      console.error(`refunding soft play ${s.id}: ${body}`);
+      await refund(s.payment_intent);
+      await insert("softplay_bookings", { ...spBooking, cancelled_at: new Date().toISOString(), refunded_at: new Date().toISOString() }).catch(() => {});
+      return new Response("refunded", { status: 200 });
+    }
+    console.error(`softplay insert failed: ${res.status} ${body}`);
     return new Response("retry", { status: 500 });
   }
 

@@ -1,6 +1,8 @@
 // Padel Power · refunds
-// POST { booking_ids: [...] }
+// POST { booking_ids: [...] } and/or { softplay_booking_ids: [...] }
 // Refunds each paid, unrefunded card booking via Stripe and soft-cancels it.
+// softplay_booking_ids are looked up in softplay_bookings, everything else
+// in bookings; results come back keyed by id either way.
 // Idempotent: a booking already refunded comes back as already_refunded and
 // Stripe's own charge_already_refunded is treated as success.
 //
@@ -71,16 +73,19 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { booking_ids } = await req.json();
-    if (!Array.isArray(booking_ids) || !booking_ids.length || booking_ids.length > 20) {
+    const body = await req.json();
+    const classIds: string[] = Array.isArray(body.booking_ids) ? body.booking_ids : [];
+    const spIds: string[] = Array.isArray(body.softplay_booking_ids) ? body.softplay_booking_ids : [];
+    const jobs = [...classIds.map((id) => ({ id, table: "bookings" })), ...spIds.map((id) => ({ id, table: "softplay_bookings" }))];
+    if (!jobs.length || jobs.length > 40) {
       return json({ error: "bad_request" }, 400);
     }
 
     const results: Record<string, string> = {};
-    for (const id of booking_ids) {
+    for (const { id, table } of jobs) {
       if (!/^[0-9a-f-]{36}$/.test(String(id))) { results[id] = "bad_id"; continue; }
       const rows = await db(
-        `bookings?id=eq.${id}&select=id,payment_intent_id,paid_at,refunded_at,cancelled_at`,
+        `${table}?id=eq.${id}&select=id,payment_intent_id,paid_at,refunded_at,cancelled_at`,
       );
       const bk = rows[0];
       if (!bk) { results[id] = "not_found"; continue; }
@@ -103,7 +108,7 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      await db(`bookings?id=eq.${id}`, {
+      await db(`${table}?id=eq.${id}`, {
         method: "PATCH",
         headers: { Prefer: "return=minimal" },
         body: JSON.stringify({

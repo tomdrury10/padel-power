@@ -49,6 +49,13 @@
         Leagues
       </button>
       </div>
+      <div class="d2-navgroup" data-group="softplay">
+        <span class="d2-navlabel">Soft play</span>
+        <button data-page="softplay">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="7" r="3"/><path d="M5 21v-3a4 4 0 014-4h6a4 4 0 014 4v3M3 12l2-2M21 12l-2-2"/></svg>
+        Sessions
+      </button>
+      </div>
       <div class="d2-navgroup" data-group="admin">
         <span class="d2-navlabel">Admin</span>
         <button data-page="enquiries">
@@ -269,6 +276,45 @@
       </div>
     </section>
 
+    <!-- ===== SOFT PLAY ===== -->
+    <section class="d2-page" id="pgSoftplay" hidden>
+      <div class="d2-toolbar">
+        <div class="d2-wknav">
+          <button class="d2-icon" id="spPrev" aria-label="Previous week"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M15 6l-6 6 6 6"/></svg></button>
+          <button class="d2-btn ghost" id="spToday">This week</button>
+          <button class="d2-icon" id="spNext" aria-label="Next week"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M9 6l6 6-6 6"/></svg></button>
+          <span class="d2-wklabel" id="spWeekLabel"></span>
+        </div>
+        <button class="d2-btn primary" id="spAddBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="14" height="14"><path d="M12 5v14M5 12h14"/></svg>
+          Add sessions
+        </button>
+      </div>
+      <div class="d2-cols">
+        <div class="d2-card">
+          <div class="d2-card-head"><h2>Sessions</h2><span class="d2-tag" id="spOpenTag"></span></div>
+          <p class="d2-sub">Supervised sessions need the minimum number of children by the confirm or cancel point or they are cancelled and refunded automatically. A hire slot is the whole space for one booking. Click a session to see who is booked, check them in, add a desk booking or cancel it.</p>
+          <div id="spSessions"></div>
+        </div>
+        <div class="d2-col-stack">
+          <div class="d2-card">
+            <div class="d2-card-head"><h2>Soft play settings</h2></div>
+            <p class="d2-sub">Nothing sells online until "Online booking open" is ticked and the supervised price is set. Hire is charged per child per hour; a 90 minute hire slot costs one and a half times the hourly price.</p>
+            <form class="d2-rules" id="spRules">
+              <label>Supervised price per child (£)<input name="spSupervised" type="number" min="0" max="100" step="0.01" placeholder="Not set yet"></label>
+              <label>Hire price per child per hour (£)<input name="spHire" type="number" min="0" max="100" step="0.01" required></label>
+              <label>Minimum children to run<input name="spMin" type="number" min="1" max="20" required></label>
+              <label>Default capacity<input name="spMax" type="number" min="1" max="30" required></label>
+              <label>Age from<input name="spAgeMin" type="number" min="0" max="16" required></label>
+              <label>Age to<input name="spAgeMax" type="number" min="1" max="18" required></label>
+              <label class="d2-check" style="grid-column:1 / -1"><input name="spOpen" type="checkbox"><span>Online booking open</span></label>
+              <div class="d2-form-row"><button class="d2-btn primary" type="submit">Save soft play settings</button><span class="d2-hint" id="spRulesSaved" hidden>Saved</span></div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- ===== GUIDES ===== -->
     <section class="d2-page" id="pgGuides" hidden>
       <div class="d2-toolbar">
@@ -471,6 +517,62 @@
     </form>
   </div>
 </aside>
+<!-- ===== SOFT PLAY: ADD SESSIONS DRAWER ===== -->
+<aside class="d2-drawer" id="spDrawer" role="dialog" aria-modal="true">
+  <div class="d2-dr-head"><span>Add soft play sessions</span>
+    <button class="d2-icon" id="spDrClose" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
+  </div>
+  <div class="d2-dr-body">
+    <form id="spAddForm">
+      <label class="d2-label" for="spDate">Date</label>
+      <input class="d2-input" id="spDate" name="spDate" type="date" required>
+      <label class="d2-label" for="spTime">Start time</label>
+      <input class="d2-input" id="spTime" name="spTime" type="time" step="900" required>
+      <label class="d2-label" for="spMode">Type</label>
+      <select class="d2-input" id="spMode" name="spMode">
+        <option value="supervised">Supervised session (staff run)</option>
+        <option value="hire">Hire slot (parents supervise)</option>
+      </select>
+      <label class="d2-label" for="spDuration">Length (minutes)</label>
+      <select class="d2-input" id="spDuration" name="spDuration">
+        <option value="60">60</option><option value="90">90</option><option value="120">120</option><option value="45">45</option>
+      </select>
+      <label class="d2-label" for="spCap">Capacity (children)</label>
+      <input class="d2-input" id="spCap" name="spCap" type="number" min="1" max="30" required>
+      <label class="d2-label" for="spRepeat">Repeat weekly</label>
+      <select class="d2-input" id="spRepeat" name="spRepeat">
+        <option value="1">Just this date</option><option value="4">For 4 weeks</option><option value="8">For 8 weeks</option><option value="12">For 12 weeks</option>
+      </select>
+      <label class="d2-label" for="spNotes">Note shown to parents (optional)</label>
+      <input class="d2-input" id="spNotes" name="spNotes" type="text" maxlength="80" placeholder="e.g. Toddler morning">
+      <button class="d2-btn primary block" type="submit" id="spAddGo">Add to the timetable</button>
+      <p class="d2-hint">Sessions appear on the public soft play page straight away. One session per start time.</p>
+    </form>
+  </div>
+</aside>
+<!-- ===== SOFT PLAY: DESK BOOKING DRAWER ===== -->
+<aside class="d2-drawer" id="spBkDrawer" role="dialog" aria-modal="true">
+  <div class="d2-dr-head"><span>Desk booking</span>
+    <button class="d2-icon" id="spBkClose" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
+  </div>
+  <div class="d2-dr-body">
+    <div class="d2-dr-class"><b>Session</b><span id="spBkWhen"></span></div>
+    <form id="spBkForm">
+      <label class="d2-label" for="spBkName">Parent or carer</label>
+      <input class="d2-input" id="spBkName" type="text" required maxlength="80" placeholder="Full name">
+      <label class="d2-label" for="spBkPhone">Mobile</label>
+      <input class="d2-input" id="spBkPhone" type="tel" required maxlength="30" placeholder="+44 7…">
+      <label class="d2-label" for="spBkEmail">Email (optional)</label>
+      <input class="d2-input" id="spBkEmail" type="email" maxlength="120">
+      <label class="d2-label" for="spBkKids">Children</label>
+      <input class="d2-input" id="spBkKids" type="number" min="1" max="30" value="1" required>
+      <label class="d2-label" for="spBkNames">Names and ages (optional)</label>
+      <input class="d2-input" id="spBkNames" type="text" maxlength="200">
+      <button class="d2-btn primary block" type="submit" id="spBkGo">Confirm booking</button>
+      <p class="d2-hint">Desk bookings are never charged online. Take the payment however you normally would. They get the confirmation text like everyone else.</p>
+    </form>
+  </div>
+</aside>
 <!-- ===== MOVE / EDIT CLASS DRAWER ===== -->
 <aside class="d2-drawer" id="mmDrawer" role="dialog" aria-modal="true">
   <div class="d2-dr-head"><span>Move members</span>
@@ -515,9 +617,10 @@
 </div>
 
 
-<script src="../assets/pilates-core.js?v=25"></script>
-<script src="../assets/admin.js?v=37"></script>
-<script src="../assets/admin-guides.js?v=2"></script>
+<script src="../assets/pilates-core.js?v=26"></script>
+<script src="../assets/admin.js?v=38"></script>
+<script src="../assets/admin-guides.js?v=3"></script>
 <script src="../assets/admin-leagues.js?v=4"></script>
+<script src="../assets/admin-softplay.js?v=1"></script>
 </body>
 </html>

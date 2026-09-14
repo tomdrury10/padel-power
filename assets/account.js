@@ -344,17 +344,57 @@
     </div>`;
   }
 
+  // soft play bookings sit in the same lists as classes
+  function softplayRow(b, upcoming) {
+    const start = new Date(b.start);
+    const paid = b.paid && b.amount ? gbp(b.amount) : 'Reserved';
+    let status = '';
+    if (b.cancelledAt) status = b.refunded ? 'Cancelled · refunded' : 'Cancelled';
+    else if (!upcoming) status = 'Attended';
+    const canCancel = upcoming && (b.start - Date.now()) >= RULES.cutoffHours * 3600000;
+    return `
+    <div class="ac-item ${b.cancelledAt ? 'dim' : ''}">
+      <div>
+        <b>${esc(b.classType)}</b>
+        <span>${fmtWhen(start)} · ${b.time} · ${b.children} ${b.children === 1 ? 'child' : 'children'} · ${paid}${status ? ' · ' + status : ''}</span>
+      </div>
+      ${upcoming && !b.cancelledAt
+        ? (canCancel ? `<button class="ac-cancel" data-id="${b.id}" data-kind="softplay">Cancel</button>` : `<span class="ac-tag">Within 24h</span>`)
+        : ''}
+    </div>`;
+  }
+
   function renderBookings() {
-    const up = Member.upcoming();
+    const up = [...Member.upcoming().map(b => ({ t: classStart(b.classId).getTime(), html: bookingRow(b, true) })),
+                ...Member.softplayUpcoming().map(b => ({ t: b.start, html: softplayRow(b, true) }))].sort((a, b) => a.t - b.t);
     $('acUpcoming').innerHTML = up.length
-      ? up.map(b => bookingRow(b, true)).join('')
-      : `<p class="ac-empty">Nothing booked yet. <a href="../pilates/#book">Pick a class</a>.</p>`;
-    const past = Member.past();
+      ? up.map(x => x.html).join('')
+      : `<p class="ac-empty">Nothing booked yet. <a href="../pilates/#book">Pick a class</a> or <a href="../soft-play/#book">book soft play</a>.</p>`;
+    const past = [...Member.past().map(b => ({ t: classStart(b.classId).getTime(), html: bookingRow(b, false) })),
+                  ...Member.softplayPast().map(b => ({ t: b.start, html: softplayRow(b, false) }))].sort((a, b) => b.t - a.t);
     $('acPast').innerHTML = past.length
-      ? past.slice(0, 30).map(b => bookingRow(b, false)).join('')
+      ? past.slice(0, 30).map(x => x.html).join('')
       : '<p class="ac-empty">Your past classes will show here.</p>';
 
-    $('acUpcoming').querySelectorAll('.ac-cancel').forEach(btn => btn.addEventListener('click', async () => {
+    $('acUpcoming').querySelectorAll('.ac-cancel[data-kind=softplay]').forEach(btn => btn.addEventListener('click', async () => {
+      const b = Member.softplay.find(x => x.id === btn.dataset.id);
+      const what = b.paid && b.amount ? `${gbp(b.amount)} will be refunded to your card within 5 to 10 working days.` : '';
+      if (!confirm(`Cancel your soft play booking on ${fmtWhen(new Date(b.start))} at ${b.time}? ${what}`)) return;
+      btn.disabled = true; btn.textContent = 'Cancelling…';
+      try {
+        await Store.cancelMine(b.id);
+        flash(b.paid ? 'Booking cancelled. Your refund is on its way.' : 'Booking cancelled.');
+        renderBookings();
+      } catch (err) {
+        btn.disabled = false; btn.textContent = 'Cancel';
+        const m = String(err.message);
+        alert(m === 'cutoff' ? 'Online cancellation closes 24 hours before. Call the club and we will do what we can.'
+          : m === 'refund_failed' || m === 'refund_unavailable' ? 'We could not process the refund automatically, so the booking is still active. Call the club and we will sort it.'
+          : 'Could not cancel just now. Please try again.');
+      }
+    }));
+
+    $('acUpcoming').querySelectorAll('.ac-cancel:not([data-kind])').forEach(btn => btn.addEventListener('click', async () => {
       const b = Member.bookings.find(x => x.id === btn.dataset.id);
       const what = b.paidWith === 'credit' ? 'Your credit goes back on your account.'
         : b.paid && b.amount ? `${gbp(b.amount)} will be refunded to your card within 5 to 10 working days.` : '';

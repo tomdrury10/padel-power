@@ -223,6 +223,8 @@ const RULES = {
   packCredits: 6,
   packPrice: 10000,     // pence
   packMonths: 3,
+  // soft play: filled from settings; open=false keeps online booking shut
+  softplay: { open: false, minChildren: 3, maxChildren: 10, hirePrice: 500, supervisedPrice: null, minAge: 3, maxAge: 8 },
   requirePhone: false,  // master switch; off until ClickSend is wired up
   codeMinutes: 10,
 };
@@ -348,6 +350,20 @@ const Store = {
       method: 'POST',
       body: JSON.stringify({ kind: 'pack', return_url: returnUrl || (location.origin + location.pathname) }),
     });
+  },
+  // soft play: pay for a session by card (account required, consent ticked)
+  async softplayCheckout(sessionId, children, childNames, consent) {
+    return ppFn('checkout', {
+      method: 'POST',
+      body: JSON.stringify({
+        kind: 'softplay', session_id: sessionId, children, child_names: childNames, consent: !!consent,
+        return_url: location.origin + location.pathname + location.search,
+      }),
+    });
+  },
+  // staff: refund paid soft play bookings via Stripe and soft-cancel them
+  async refundSoftplay(bookingIds) {
+    return ppFn('refund', { method: 'POST', body: JSON.stringify({ softplay_booking_ids: bookingIds }) });
   },
   async checkoutStatus(sessionId) {
     return ppFn(`checkout?session=${encodeURIComponent(sessionId)}`);
@@ -508,14 +524,68 @@ function mapBooking(r) {
   };
 }
 
+function mapSoftplayBooking(r) {
+  const s = r.softplay_sessions || {};
+  return {
+    id: r.id, kind: 'softplay', sessionId: r.session_id, name: r.name, email: r.email, phone: r.phone,
+    children: r.children, childNames: r.child_names || '', source: r.source, at: Date.parse(r.created_at),
+    amount: r.amount_pence || null, paid: !!r.paid_at, refunded: !!r.refunded_at, paidWith: r.paid_at ? 'card' : null,
+    cancelledAt: r.cancelled_at ? Date.parse(r.cancelled_at) : null,
+    checkedIn: r.checked_in_at ? Date.parse(r.checked_in_at) : null,
+    date: s.session_date || null, time: s.start_time || null, duration: s.duration_min || 60, mode: s.mode || 'supervised',
+    start: s.session_date ? new Date(`${s.session_date}T${s.start_time}:00`).getTime() : 0,
+    classType: s.mode === 'hire' ? 'Soft play hire' : 'Supervised soft play',
+  };
+}
+
+/* ---------- soft play sessions (public) ---------- */
+const Softplay = {
+  sessions: [],   // { id, date, time, duration, mode, capacity, booked, bookings, cancelled, notes }
+  price(s) {
+    const sp = RULES.softplay;
+    return s.mode === 'hire' ? Math.round(sp.hirePrice * s.duration / 60) : sp.supervisedPrice;
+  },
+  start(s) { return new Date(`${s.date}T${s.time}:00`); },
+  end(s) { return new Date(this.start(s).getTime() + s.duration * 60000); },
+  hoursLeft(s) { return (this.start(s) - new Date()) / 3600000; },
+  // same rule as the database: hire needs a free slot, supervised needs its
+  // minimum by the cutoff, everything closes at the join cutoff
+  closed(s) {
+    const left = this.hoursLeft(s);
+    if (left < RULES.joinCutoffHours) return true;
+    if (s.mode === 'supervised' && left < RULES.cutoffHours && s.booked < RULES.softplay.minChildren) return true;
+    return false;
+  },
+  spaces(s) { return s.mode === 'hire' ? (s.bookings ? 0 : s.capacity) : Math.max(0, s.capacity - s.booked); },
+  async load(fromIso, toIso) {
+    const [rows, counts] = await Promise.all([
+      ppApi(`softplay_sessions?session_date=gte.${fromIso}&session_date=lte.${toIso}&select=*&order=session_date,start_time`),
+      ppApi('softplay_session_counts?select=*'),
+    ]);
+    const byId = {}; counts.forEach(c => { byId[c.session_id] = c; });
+    this.sessions = rows.map(r => ({
+      id: r.id, date: r.session_date, time: r.start_time, duration: r.duration_min, mode: r.mode, capacity: r.capacity,
+      notes: r.notes || '', cancelled: !!r.cancelled_at, cancelReason: r.cancel_reason || '',
+      booked: byId[r.id]?.children_booked || 0, bookings: byId[r.id]?.bookings || 0,
+    }));
+    return this.sessions;
+  },
+  byId(id) { return this.sessions.find(s => s.id === id); },
+  forDate(iso) { return this.sessions.filter(s => s.date === iso && !s.cancelled); },
+};
+
 /* ---------- member: profile, credits, own bookings ---------- */
 const Member = {
   profile: null,     // { name, phone, verifiedAt }
   packs: [],         // { id, total, left, expiresAt, purchasedAt, amount }
   bookings: [],      // own bookings, mapped, newest first (incl. cancelled)
+  softplay: [],      // own soft play bookings, mapped
   waiver: false,
   loaded: false,
-  reset() { this.profile = null; this.packs = []; this.bookings = []; this.waiver = false; this.loaded = false; },
+  reset() { this.profile = null; this.packs = []; this.bookings = []; this.softplay = []; this.waiver = false; this.loaded = false; },
+  hasSoftplay(sessionId) { return this.softplay.some(b => b.sessionId === sessionId && !b.cancelledAt); },
+  softplayUpcoming() { const now = Date.now(); return this.softplay.filter(b => !b.cancelledAt && b.start >= now).sort((a, b) => a.start - b.start); },
+  softplayPast() { const now = Date.now(); return this.softplay.filter(b => b.cancelledAt || b.start < now).sort((a, b) => b.start - a.start); },
   // true when the mobile is proved, or when the studio is not asking yet
   phoneOk() { return !RULES.requirePhone || !!this.profile?.verifiedAt; },
   needsPhone() { return RULES.requirePhone && !this.profile?.verifiedAt; },
@@ -541,12 +611,14 @@ const Member = {
     const uid = Auth.userId();
     if (!uid) { this.reset(); return; }
     const email = (Auth.email() || '').toLowerCase();
-    const [prof, packs, rows, waiver] = await Promise.all([
+    const [prof, packs, rows, waiver, sp] = await Promise.all([
       ppApi(`profiles?user_id=eq.${uid}&select=full_name,phone,phone_verified_at`),
       ppApi(`credit_packs?user_id=eq.${uid}&select=*&order=expires_at.asc`),
       ppApi(`bookings?user_id=eq.${uid}&select=*&order=created_at.desc&limit=200`),
       email ? ppApi(`waivers?email=eq.${encodeURIComponent(email)}&select=signed_at`) : Promise.resolve([]),
+      ppApi(`softplay_bookings?user_id=eq.${uid}&select=*,softplay_sessions(session_date,start_time,duration_min,mode)&order=created_at.desc&limit=100`).catch(() => []),
     ]);
+    this.softplay = sp.map(mapSoftplayBooking);
     this.profile = {
       name: prof[0]?.full_name || '',
       phone: prof[0]?.phone || '',
@@ -777,6 +849,12 @@ async function ppInit() {
       packPrice: s.pack_price_pence ?? RULES.packPrice,
       packMonths: s.pack_expiry_months ?? RULES.packMonths,
       requirePhone: s.require_phone_verification ?? RULES.requirePhone,
+      softplay: {
+        open: !!s.softplay_open,
+        minChildren: s.softplay_min_children ?? 3, maxChildren: s.softplay_max_children ?? 10,
+        hirePrice: s.softplay_hire_price_pence ?? 500, supervisedPrice: s.softplay_supervised_price_pence ?? null,
+        minAge: s.softplay_min_age ?? 3, maxAge: s.softplay_max_age ?? 8,
+      },
       codeMinutes: s.verification_code_minutes ?? RULES.codeMinutes,
     });
   }

@@ -54,6 +54,20 @@ function hoursUntil(dateIso: string, time: string): number {
 }
 
 const FIELDS = "id,class_id,name,class_type,cancelled_at,paid_at,refunded_at,amount_pence,payment_intent_id,paid_with,credit_pack_id,user_id";
+const SP_FIELDS = "id,name,cancelled_at,paid_at,refunded_at,amount_pence,payment_intent_id,user_id,children,softplay_sessions(session_date,start_time,mode)";
+
+// a soft play booking, reshaped to look like a class booking so the same
+// rules and the same cancel page apply
+function fromSoftplay(r: Record<string, unknown> | undefined) {
+  if (!r) return undefined;
+  const sess = r.softplay_sessions as { session_date: string; start_time: string; mode: string };
+  return {
+    ...r, kind: "softplay", table: "softplay_bookings",
+    class_id: `${sess.session_date}_${sess.start_time}`,
+    class_type: sess.mode === "hire" ? "Soft play hire" : "Supervised soft play session",
+    paid_with: "card", credit_pack_id: null,
+  } as Record<string, unknown>;
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
@@ -67,13 +81,15 @@ Deno.serve(async (req) => {
     let bk;
     if (token) {
       if (!/^[a-f0-9]{24}$/.test(token)) return json({ error: "invalid_link" }, 404);
-      bk = (await db(`bookings?cancel_token=eq.${token}&select=${FIELDS}`))[0];
+      bk = (await db(`bookings?cancel_token=eq.${token}&select=${FIELDS}`))[0]
+        || fromSoftplay((await db(`softplay_bookings?cancel_token=eq.${token}&select=${SP_FIELDS}`))[0]);
     } else if (bookingId) {
       // a member cancelling from their account: must own the booking
       if (!/^[0-9a-f-]{36}$/.test(bookingId)) return json({ error: "invalid_link" }, 404);
       const user = await currentUser(req);
       if (!user) return json({ error: "account_required" }, 401);
-      bk = (await db(`bookings?id=eq.${bookingId}&user_id=eq.${user.id}&select=${FIELDS}`))[0];
+      bk = (await db(`bookings?id=eq.${bookingId}&user_id=eq.${user.id}&select=${FIELDS}`))[0]
+        || fromSoftplay((await db(`softplay_bookings?id=eq.${bookingId}&user_id=eq.${user.id}&select=${SP_FIELDS}`))[0]);
     } else {
       return json({ error: "invalid_link" }, 404);
     }
@@ -86,7 +102,10 @@ Deno.serve(async (req) => {
     const byCard = !!bk.paid_at && !bk.refunded_at && bk.paid_with !== "credit" && !!bk.payment_intent_id;
     const byCredit = bk.paid_with === "credit" && !!bk.credit_pack_id;
 
+    const table = bk.table || "bookings";
     const state = {
+      kind: bk.kind || "class",
+      children: bk.children ?? null,
       name: (bk.name || "").split(" ")[0],
       class_name: bk.class_type || "Reformer class",
       date: dateIso,
@@ -130,7 +149,7 @@ Deno.serve(async (req) => {
     }
 
     // credit bookings: the bookings_return_credit trigger hands the credit back
-    await db(`bookings?id=eq.${bk.id}&cancelled_at=is.null`, {
+    await db(`${table}?id=eq.${bk.id}&cancelled_at=is.null`, {
       method: "PATCH",
       headers: { Prefer: "return=minimal" },
       body: JSON.stringify(patch),

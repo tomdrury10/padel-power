@@ -4,6 +4,8 @@
 //
 // POST { kind: "class", class_id, return_url }  -> { url }  pay for one class
 // POST { kind: "pack",  return_url }            -> { url }  buy a credit pack
+// POST { kind: "softplay", session_id, children, child_names?, consent, return_url }
+//                                               -> { url }  soft play session
 // GET  ?session=cs_...                          -> post-payment state
 //
 // Prices, pack size and expiry come from the DB, never the client.
@@ -119,6 +121,18 @@ Deno.serve(async (req) => {
         });
       }
 
+      if (s.metadata?.type === "softplay") {
+        const sp = await db(`softplay_bookings?stripe_session_id=eq.${session}&select=id,session_id,children,refunded_at`);
+        return json({
+          kind: "softplay",
+          paid,
+          booked: sp.length > 0 && !sp[0].refunded_at,
+          refunded: sp.length > 0 && !!sp[0].refunded_at,
+          session_id: s.metadata?.session_id || null,
+          children: sp[0]?.children ?? null,
+        });
+      }
+
       const rows = await db(
         `bookings?stripe_session_id=eq.${session}&select=class_id,name,refunded_at`,
       );
@@ -136,7 +150,7 @@ Deno.serve(async (req) => {
 
     // ---- POST: create a checkout session (account required) ----
     const b = await req.json();
-    const kind = b.kind === "pack" ? "pack" : "class";
+    const kind = b.kind === "pack" ? "pack" : b.kind === "softplay" ? "softplay" : "class";
     const user = await currentUser(req);
     const guest = !user && ALLOW_GUEST_CHECKOUT && kind === "class";
     if (!user && !guest) return json({ error: "account_required" }, 401);
@@ -194,6 +208,75 @@ Deno.serve(async (req) => {
         cancel_url: base,
         expires_at: String(Math.floor(Date.now() / 1000) + 1800),
       });
+      return json({ url: session.url });
+    }
+
+    // ---- soft play session ----
+    if (kind === "softplay") {
+      const sessionId = String(b.session_id || "");
+      if (!/^[0-9a-f-]{36}$/.test(sessionId)) return json({ error: "bad_session" }, 400);
+      if (!phone) return json({ error: "profile_incomplete" }, 400);
+      if (!b.consent) return json({ error: "consent_required" }, 409);
+      const children = Math.floor(Number(b.children));
+      if (!(children >= 1 && children <= 30)) return json({ error: "bad_children" }, 400);
+      const childNames = String(b.child_names || "").trim().slice(0, 200);
+
+      const [sessions, sp] = await Promise.all([
+        db(`softplay_sessions?id=eq.${sessionId}&select=*`),
+        db("settings?id=eq.1&select=softplay_open,softplay_min_children,softplay_hire_price_pence,softplay_supervised_price_pence,cutoff_hours,join_cutoff_hours"),
+      ]);
+      const sess = sessions[0];
+      if (!sess) return json({ error: "no_such_session" }, 404);
+      if (sess.cancelled_at) return json({ error: "session_cancelled" }, 409);
+      const cfg = sp[0] || {};
+      if (!cfg.softplay_open) return json({ error: "softplay_closed" }, 409);
+      const perChild = sess.mode === "hire"
+        ? Number(cfg.softplay_hire_price_pence) * (Number(sess.duration_min) / 60)
+        : Number(cfg.softplay_supervised_price_pence);
+      if (!(perChild > 0)) return json({ error: "price_not_set" }, 409);
+
+      const left = hoursUntil(sess.session_date, sess.start_time);
+      if (left <= 0) return json({ error: "session_in_past" }, 409);
+      const [live, mineSp] = await Promise.all([
+        db(`softplay_bookings?session_id=eq.${sessionId}&cancelled_at=is.null&select=children`),
+        db(`softplay_bookings?session_id=eq.${sessionId}&user_id=eq.${user.id}&cancelled_at=is.null&select=id`),
+      ]);
+      const booked = live.reduce((n: number, r: { children: number }) => n + Number(r.children), 0);
+      if (mineSp.length) return json({ error: "already_booked" }, 409);
+      if (sess.mode === "hire" && live.length) return json({ error: "session_taken" }, 409);
+      if (booked + children > Number(sess.capacity)) return json({ error: "session_full" }, 409);
+      const joinCutoff = cfg.join_cutoff_hours ?? 1;
+      if (left < joinCutoff) return json({ error: "cutoff" }, 409);
+      if (sess.mode === "supervised" && left < Number(cfg.cutoff_hours) && booked < Number(cfg.softplay_min_children)) {
+        return json({ error: "cutoff" }, 409);
+      }
+
+      const amount = Math.round(perChild * children);
+      const when = `${FMT.format(new Date(`${sess.session_date}T12:00:00`))} at ${sess.start_time}`;
+      const label = sess.mode === "hire" ? "Soft play hire" : "Supervised soft play session";
+      const session = await stripe("checkout/sessions", {
+        mode: "payment",
+        "line_items[0][price_data][currency]": "gbp",
+        "line_items[0][price_data][unit_amount]": String(Math.round(perChild)),
+        "line_items[0][price_data][product_data][name]": label,
+        "line_items[0][price_data][product_data][description]":
+          `${when}, Padel Power Northampton. ${sess.duration_min} minutes, per child.`,
+        "line_items[0][quantity]": String(children),
+        customer_email: email,
+        "metadata[type]": "softplay",
+        "metadata[session_id]": sessionId,
+        "metadata[user_id]": user.id,
+        "metadata[children]": String(children),
+        "metadata[child_names]": childNames,
+        "metadata[name]": name,
+        "metadata[phone]": phone,
+        "metadata[email]": email,
+        "payment_intent_data[description]": `${label} · ${when} · ${children} ${children === 1 ? "child" : "children"} · ${name}`,
+        success_url: `${base}${sep}sp_session={CHECKOUT_SESSION_ID}`,
+        cancel_url: base,
+        expires_at: String(Math.floor(Date.now() / 1000) + 1800),
+      });
+      void amount;
       return json({ url: session.url });
     }
 

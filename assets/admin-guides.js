@@ -8,7 +8,7 @@
    dashboard itself with sample data, never real members.
    ============================================================ */
 
-const GUIDE_CATS = ['Getting started', 'Classes', 'Bookings', 'Enquiries', 'Running the studio', 'Leagues'];
+const GUIDE_CATS = ['Getting started', 'Classes', 'Bookings', 'Enquiries', 'Running the studio', 'Leagues', 'Soft play'];
 
 const GUIDES = [
   /* ---------- Getting started ---------- */
@@ -162,6 +162,46 @@ const GUIDES = [
       'The instructor gets a cancellation notice for each affected date too.',
       'A one off class that happens to sit at the same time on one of those days is a separate class and is left alone.',
       'To take off a single date instead, use Cancel class.',
+    ],
+  },
+
+  /* ---------- Soft play ---------- */
+  {
+    id: 'softplay-sessions',
+    cat: 'Soft play',
+    roles: ['admin'],
+    title: 'Putting soft play sessions on the timetable',
+    intro: 'Soft play is booked slot by slot. You decide which slots exist: supervised sessions run by our team, or hire slots where parents book the whole space and supervise themselves.',
+    steps: [
+      'Open Soft play in the left hand menu and press Add sessions.',
+      'Pick the date, start time and length, then choose Supervised session or Hire slot.',
+      'Capacity is the most children that slot takes. For a hire slot it is the most one family or group can bring.',
+      'Repeat weekly puts the same slot on for the next 4, 8 or 12 weeks in one go.',
+      'Press Add to the timetable. It is on the public soft play page straight away.',
+    ],
+    notes: [
+      'Nothing sells online until Online booking open is ticked in the soft play settings and the supervised price is set. Add your sessions first, then flip the switch on opening day.',
+      'Hire is priced per child per hour, so a 90 minute hire slot costs one and a half times the hourly price per child.',
+      'One session per start time. If you need a supervised session and a hire slot at the same time, that is two different times.',
+    ],
+  },
+  {
+    id: 'softplay-day',
+    cat: 'Soft play',
+    roles: ['admin'],
+    title: 'On the day: bookings, check-in and cancelling',
+    intro: 'Click any session to open it. Everything about that slot is in there.',
+    steps: [
+      'The list shows each parent, their mobile, how many children and any names they gave, and whether they paid online or are paying at the desk.',
+      'Press Check in as each family arrives. The count at the top shows how many children are here.',
+      'Desk booking adds a family who rang up or walked in. They are never charged online; take the money however you normally would.',
+      'Remove booking cancels one family. A card payment is refunded automatically.',
+      'Cancel session cancels the whole slot: everyone booked is texted and card payments are refunded automatically.',
+    ],
+    notes: [
+      'Supervised sessions under the minimum are cancelled automatically at the confirm or cancel point (normally 24 hours before), the same as Pilates. Hire slots are never auto-cancelled.',
+      'Once a supervised session has reached its minimum it stays open to book online until the late joins cutoff, normally an hour before.',
+      'Parents can cancel themselves up to 24 hours before from their account or the link in their text. Inside 24 hours they have to call.',
     ],
   },
 
