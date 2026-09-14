@@ -1285,6 +1285,14 @@ html.flat img{content-visibility:visible}
   background:none;border:1px solid transparent;color:var(--tx3);cursor:pointer;transition:.15s;
 }
 .d2-x:hover{color:var(--dang);border-color:rgba(224,104,90,.4)}
+.d2-ci{
+  flex:none;font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;
+  border:1px solid var(--ln2);border-radius:99px;padding:5px 10px;background:none;color:var(--tx2);cursor:pointer;transition:.15s;
+}
+.d2-ci:hover{border-color:var(--tx3);color:var(--tx)}
+.d2-ci.on{color:var(--ok);border-color:rgba(76,195,138,.5);background:rgba(76,195,138,.1)}
+.d2-ci:disabled{opacity:.5;cursor:default}
+.d2-tag.here{color:var(--ok);border-color:rgba(76,195,138,.4)}
 .d2-det-actions{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
 
 /* bookings table */

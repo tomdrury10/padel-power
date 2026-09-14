@@ -65,6 +65,10 @@ const isAdmin = () => PP_ROLE === 'admin';
 const teaches = c => !!(PP_INSTRUCTOR && c && c.instructor
   && String(c.instructor).toLowerCase() === String(PP_INSTRUCTOR).toLowerCase());
 const canEditClass = c => isAdmin() || teaches(c);
+// check-in opens three hours before a class and never closes, so a late
+// tick or an admin correction after the class still lands
+const CHECKIN_OPEN_MS = 3 * 3600 * 1000;
+const checkInOpen = c => !c.cancelled && canEditClass(c) && (classStart(c.id) - new Date()) < CHECKIN_OPEN_MS;
 
 // instructors get the schedule, their own classes' bookings, and a password
 // form. The database enforces all of it; this only shapes the UI.
@@ -307,6 +311,8 @@ function renderDetail() {
   const s = statusOf(c);
   const people = Store.attendees(c.id);
   const free = RULES.maxRiders - c.count;
+  const ci = checkInOpen(c);
+  const here = people.filter(p => p.checkedIn).length;
   el.innerHTML = `
     <div class="d2-det-head">
       <div>
@@ -316,17 +322,20 @@ function renderDetail() {
       <span class="d2-tag st ${s.key}">${s.label}</span>
     </div>
     <div class="d2-beds">${Array.from({ length: RULES.maxRiders }, (_, i) => `<i class="${i < c.count ? 'taken' : ''}"></i>`).join('')}</div>
-    <div class="d2-det-spots">${free} of ${RULES.maxRiders} beds free</div>
+    <div class="d2-det-spots">${free} of ${RULES.maxRiders} beds free${ci && people.length ? ` · ${here} of ${people.length} here` : ''}</div>
     <div class="d2-det-list">
       ${c.cancelled ? '<p class="d2-empty">This class is cancelled. It no longer appears on the public timetable.</p>' : ''}
       ${people.length ? people.map(p => `
         <div class="d2-att">
           <div><b>${esc(p.name)}</b><span>${esc(p.phone || '')}${p.email ? ' · ' + esc(p.email) : ''}${payLabel(p)}${waiverMark(p.email)}</span></div>
           <span class="d2-tag ${p.source === 'Online' ? 'online' : ''}">${esc(p.source)}</span>
+          ${ci ? `<button class="d2-ci ${p.checkedIn ? 'on' : ''}" data-cid="${p.id}" title="${p.checkedIn ? 'Checked in. Press again to undo' : 'Mark as here'}">${p.checkedIn ? '✓ Here' : 'Check in'}</button>`
+            : p.checkedIn ? '<span class="d2-tag here">Here</span>' : ''}
           ${isAdmin() ? `<button class="d2-x" data-bid="${p.id}" title="Remove booking"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M5 5l14 14M19 5L5 19"/></svg></button>` : ''}
         </div>`).join('') : '<p class="d2-empty">No bookings yet.</p>'}
     </div>
     <div class="d2-det-actions">
+      ${ci && people.some(p => !p.checkedIn) ? `<button class="d2-btn ghost" id="detAllHere">Everyone is here</button>` : ''}
       ${!c.cancelled && free > 0 && isAdmin() ? `<button class="d2-btn primary" id="detAdd">+ New booking</button>` : ''}
       ${!c.cancelled && canEditClass(c) ? `<button class="d2-btn ghost" id="detEdit">Edit class</button>` : ''}
       ${!c.cancelled && people.length && canEditClass(c) ? `<button class="d2-btn ghost" id="detMoveMembers">Move members</button>` : ''}
@@ -338,6 +347,24 @@ function renderDetail() {
     </div>`;
   el.querySelectorAll('.wv-view').forEach(b =>
     b.addEventListener('click', () => openWaiverView(b.dataset.em)));
+  const checkInErr = err => alert(String(err && err.message).includes('forbidden')
+    ? 'Only the instructor of this class or the studio can check people in.'
+    : 'Could not save the check-in. Please try again.');
+  el.querySelectorAll('.d2-ci').forEach(b =>
+    b.addEventListener('click', async () => {
+      const p = people.find(x => x.id === b.dataset.cid);
+      if (!p) return;
+      b.disabled = true;
+      try { await Store.setCheckIn(p.id, !p.checkedIn); } catch (err) { checkInErr(err); }
+      renderDetail();
+    }));
+  const allHere = $('detAllHere');
+  if (allHere) allHere.addEventListener('click', async () => {
+    allHere.disabled = true; allHere.textContent = 'Saving…';
+    try { for (const p of people.filter(x => !x.checkedIn)) await Store.setCheckIn(p.id, true); }
+    catch (err) { checkInErr(err); }
+    renderDetail();
+  });
   el.querySelectorAll('.d2-x').forEach(b =>
     b.addEventListener('click', async () => {
       const p = people.find(x => x.id === b.dataset.bid);
@@ -541,7 +568,7 @@ function renderBookings() {
       <td class="ct">${esc(b.phone || '')}${b.email ? '<br>' + esc(b.email) : ''}${waiverMark(b.email)}</td>
       <td>${esc(b.cls.t.name)}</td>
       <td class="ct">${fmtDay.format(b.cls.date)} ${fmtDate.format(b.cls.date)} · ${b.cls.time}</td>
-      <td><span class="d2-tag ${(b.source || 'Online') === 'Online' ? 'online' : ''}">${esc(b.source || 'Online')}</span>${b.paidWith === 'credit' ? '<br><span class="d2-tag" style="margin-top:5px">Credit</span>' : b.paid ? `<br><span class="d2-tag" style="margin-top:5px">Paid ${gbp(b.amount)}</span>` : ''}</td>
+      <td><span class="d2-tag ${(b.source || 'Online') === 'Online' ? 'online' : ''}">${esc(b.source || 'Online')}</span>${b.paidWith === 'credit' ? '<br><span class="d2-tag" style="margin-top:5px">Credit</span>' : b.paid ? `<br><span class="d2-tag" style="margin-top:5px">Paid ${gbp(b.amount)}</span>` : ''}${b.checkedIn ? '<br><span class="d2-tag here" style="margin-top:5px">Here ✓</span>' : ''}</td>
       <td class="rm">${isAdmin() ? `<button class="d2-x" data-id="${b.classId}" data-bid="${b.id}" title="Remove booking"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M5 5l14 14M19 5L5 19"/></svg></button>` : ''}</td>
     </tr>`).join('');
   $('bkEmpty').hidden = rows.length > 0;

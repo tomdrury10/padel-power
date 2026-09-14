@@ -449,6 +449,18 @@ const Store = {
 
   // staff: move chosen bookings onto another class. The database checks
   // room, permissions and doubles, and texts every member it moves.
+  // staff: mark someone as arrived, or undo it. The database allows an
+  // admin or the class's own instructor and refuses everyone else.
+  async setCheckIn(bookingId, present) {
+    const r = await ppApi('rpc/set_check_in', {
+      method: 'POST',
+      body: JSON.stringify({ p_id: bookingId, p_present: present }),
+    });
+    const b = cache.bookings.find(x => x.id === bookingId);
+    if (b) { b.checkedIn = r.checked_in_at ? Date.parse(r.checked_in_at) : null; b.checkedInBy = r.checked_in_by || null; }
+    return r;
+  },
+
   async moveBookings(bookingIds, toClassId) {
     const r = await ppApi('rpc/move_bookings', {
       method: 'POST',
@@ -484,6 +496,8 @@ function mapBooking(r) {
     paidWith: r.paid_with || (r.paid_at ? 'card' : null),   // 'card' | 'credit' | null
     cancelledAt: r.cancelled_at ? Date.parse(r.cancelled_at) : null,
     classType: r.class_type || null,
+    checkedIn: r.checked_in_at ? Date.parse(r.checked_in_at) : null,
+    checkedInBy: r.checked_in_by || null,
   };
 }
 

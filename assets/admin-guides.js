@@ -185,6 +185,25 @@ const GUIDES = [
     ],
   },
   {
+    id: 'check-in',
+    cat: 'Bookings',
+    roles: ['admin', 'instructor'],
+    title: 'Checking people in',
+    intro: 'A tick against each person who actually turns up, so the studio knows who came and who did not.',
+    steps: [
+      'Open Schedule and click the class. From three hours before it starts, a Check in button appears next to each name.',
+      'Press Check in as each person arrives. It turns green and reads Here.',
+      'Pressed the wrong one? Press it again to undo.',
+      'If everyone on the list has arrived, Everyone is here ticks them all in one go.',
+      'The line under the beds shows how many of the booked members have been checked in.',
+    ],
+    notes: [
+      'Instructors can check in their own classes. Admins can do it for any class, including after the class has finished.',
+      'Anyone left unticked stays as booked but not checked in, which is how the studio sees who did not turn up. A tick never charges or refunds anything.',
+      'Under Bookings, people who were checked in show a green Here tag.',
+    ],
+  },
+  {
     id: 'take-booking',
     cat: 'Bookings',
     roles: ['admin'],
