@@ -451,6 +451,9 @@ section{position:relative}
 /* court count strip */
 .courtcount{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(14px,1.6vw,24px)}
 @media(max-width:760px){.courtcount{grid-template-columns:1fr}}
+.courtcount.four{grid-template-columns:repeat(4,1fr)}
+@media(max-width:1100px){.courtcount.four{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.courtcount.four{grid-template-columns:1fr}}
 
 /* ---------- footer ---------- */
 footer{border-top:1px solid var(--line-soft);background:#080909;overflow:hidden}
