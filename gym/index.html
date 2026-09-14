@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- DRAFT: staff-gated until sign-off. To go live: remove noindex + the Auth gate at the bottom, add to nav/footer/sitemap/homepage, remove the robots.txt disallow. -->
+<meta name="robots" content="noindex">
 <title>The Gym | Padel Power Northampton</title>
 <meta name="description" content="The Gym at Padel Power Northampton is open. 600 square metres of strength, cardio and a HYROX zone, open from 5am, memberships from £24.99 a month with no joining fee. Sign up in the Padel Power app.">
 <link rel="canonical" href="https://www.padelpower.uk/gym/">
@@ -25,7 +27,6 @@
       <a href="../about/">The Club</a>
       <a href="../coaching/">Coaching</a>
       <a href="../northampton-padel-league/">Leagues</a>
-      <a href="../gym/">Gym</a>
       <a href="../pilates/">Pilates</a>
       <a href="../membership/">Membership</a>
       <a href="../loyalty-app/">Loyalty App</a>
@@ -49,9 +50,7 @@
   <a class="mlink" href="../about/">The Club</a>
   <a class="mlink" href="../coaching/">Coaching</a>
   <a class="mlink" href="../northampton-padel-league/">Leagues</a>
-  <a class="mlink" href="../gym/">Gym</a>
   <a class="mlink" href="../pilates/">Pilates</a>
-  <a class="mlink" href="../soft-play/">Soft Play</a>
   <a class="mlink" href="../membership/">Membership</a>
   <a class="mlink" href="../loyalty-app/">Loyalty App</a>
   <a class="mlink" href="../news/">News</a>
@@ -282,8 +281,6 @@
         <a href="../coaching/">Coaching</a>
         <a href="../northampton-padel-league/">Leagues</a>
         <a href="../pilates/">Reformer Pilates</a>
-        <a href="../gym/">The Gym</a>
-        <a href="../soft-play/">Soft Play</a>
         <a href="../membership/">Membership</a>
       </div>
       <div class="fcol">
@@ -317,5 +314,7 @@
 </footer>
 
 <script src="../assets/site.js?v=4"></script>
+<script src="../assets/pilates-core.js?v=26"></script>
+<script>if(!Auth.session())location.replace('../login/?next='+encodeURIComponent(location.pathname+location.search));</script>
 </body>
 </html>
