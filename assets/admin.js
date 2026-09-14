@@ -326,12 +326,18 @@ function renderDetail() {
     <div class="d2-det-list">
       ${c.cancelled ? '<p class="d2-empty">This class is cancelled. It no longer appears on the public timetable.</p>' : ''}
       ${people.length ? people.map(p => `
-        <div class="d2-att">
-          <div><b>${esc(p.name)}</b><span>${esc(p.phone || '')}${p.email ? ' · ' + esc(p.email) : ''}${payLabel(p)}${waiverMark(p.email)}</span></div>
-          <span class="d2-tag ${p.source === 'Online' ? 'online' : ''}">${esc(p.source)}</span>
-          ${ci ? `<button class="d2-ci ${p.checkedIn ? 'on' : ''}" data-cid="${p.id}" title="${p.checkedIn ? 'Checked in. Press again to undo' : 'Mark as here'}">${p.checkedIn ? '✓ Here' : 'Check in'}</button>`
-            : p.checkedIn ? '<span class="d2-tag here">Here</span>' : ''}
-          ${isAdmin() ? `<button class="d2-x" data-bid="${p.id}" title="Remove booking"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M5 5l14 14M19 5L5 19"/></svg></button>` : ''}
+        <div class="d2-att${p.checkedIn ? ' here' : ''}">
+          <div class="d2-att-info">
+            <b>${esc(p.name)}</b>
+            ${p.phone ? `<span class="d2-att-line">${esc(p.phone)}</span>` : ''}
+            ${p.email ? `<span class="d2-att-line" title="${esc(p.email)}">${esc(p.email)}</span>` : ''}
+          </div>
+          <div class="d2-att-act">
+            ${ci ? `<button class="d2-ci${p.checkedIn ? ' on' : ''}" data-cid="${p.id}" title="${p.checkedIn ? 'Checked in. Press again to undo' : 'Mark as here'}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="11" height="11"><path d="M4 12.5l5 5L20 7"/></svg>${p.checkedIn ? 'Here' : 'Check in'}</button>`
+              : p.checkedIn ? '<span class="d2-tag here">Here</span>' : ''}
+            ${isAdmin() ? `<button class="d2-x" data-bid="${p.id}" title="Remove booking"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M5 5l14 14M19 5L5 19"/></svg></button>` : ''}
+          </div>
+          <span class="d2-att-meta"><em class="${p.source === 'Online' ? 'online' : ''}">${esc(p.source || 'Online')}</em>${payLabel(p)}${waiverMark(p.email)}</span>
         </div>`).join('') : '<p class="d2-empty">No bookings yet.</p>'}
     </div>
     <div class="d2-det-actions">
