@@ -68,7 +68,7 @@
       )
       .join('');
 
-    return `<div class="ls-scroll"><table class="ls-table">
+    return `<div class="ls-scroll" tabindex="0" role="region" aria-label="League standings table. Scrolls sideways on small screens."><table class="ls-table">
       <thead><tr>
         <th class="ls-pos"></th><th class="ls-team">Team</th>
         ${COLS.map(([, s, full]) => `<th title="${full}">${s}</th>`).join('')}
@@ -91,7 +91,7 @@
         ${groups
           .map(
             (g, i) =>
-              `<button class="ls-tab${i === 0 ? ' on' : ''}" role="tab" data-g="${g}">Group ${g}</button>`
+              `<button class="ls-tab${i === 0 ? ' on' : ''}" role="tab" aria-selected="${i === 0}" data-g="${g}">Group ${g}</button>`
           )
           .join('')}
       </div>
@@ -112,7 +112,7 @@
 
     root.querySelectorAll('.ls-tab').forEach((btn) => {
       btn.addEventListener('click', () => {
-        root.querySelectorAll('.ls-tab').forEach((b) => b.classList.toggle('on', b === btn));
+        root.querySelectorAll('.ls-tab').forEach((b) => { b.classList.toggle('on', b === btn); b.setAttribute('aria-selected', String(b === btn)); });
         root.querySelectorAll('.ls-panel').forEach((p) => {
           p.hidden = p.dataset.g !== btn.dataset.g;
         });

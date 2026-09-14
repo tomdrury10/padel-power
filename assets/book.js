@@ -214,11 +214,18 @@
     const tabs = authBox.querySelectorAll('.ev-tab');
     const panes = { in: $('evSignIn'), up: $('evSignUp') };
     const show = which => {
-      tabs.forEach(b => b.classList.toggle('on', b.dataset.tab === which));
+      tabs.forEach(b => { const on = b.dataset.tab === which; b.classList.toggle('on', on); b.setAttribute('aria-selected', String(on)); b.tabIndex = on ? 0 : -1; });
       panes.in.hidden = which !== 'in';
       panes.up.hidden = which !== 'up';
     };
     tabs.forEach(b => b.addEventListener('click', () => show(b.dataset.tab)));
+    // proper tabs: arrow keys move between them, the active one is the only tab stop
+    tabs.forEach((b, i) => b.addEventListener('keydown', e => {
+      if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
+      e.preventDefault();
+      const n = e.key === 'Home' ? 0 : e.key === 'End' ? tabs.length - 1 : (i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length;
+      tabs[n].focus(); show(tabs[n].dataset.tab);
+    }));
     show(q.get('auth') === 'in' ? 'in' : 'up');
 
     panes.up.addEventListener('submit', async e => {

@@ -4,6 +4,9 @@
    Book buttons link to book.html, the class's own event page.
    ============================================================ */
 
+// every value from the database or a profile goes through this before innerHTML
+const escHtml = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
 const dateStrip = document.getElementById('dateStrip');
 const classList = document.getElementById('classList');
 let dates = [];        // filled once ppReady has loaded the real opening date
@@ -41,8 +44,8 @@ function renderClasses() {
     <div class="pclass ${spots <= 0 || closed ? 'off' : ''}">
       <div class="pc-time"><b>${time}</b><span>1 hour</span></div>
       <div class="pc-info">
-        <div class="pc-name">${t.name} <span class="pc-level">${t.level}</span></div>
-        <div class="pc-desc">${instructor ? `With ${instructor} · ` : ''}${t.desc}</div>
+        <div class="pc-name">${escHtml(t.name)} <span class="pc-level">${escHtml(t.level)}</span></div>
+        <div class="pc-desc">${instructor ? `With ${escHtml(instructor)} · ` : ''}${escHtml(t.desc)}</div>
       </div>
       <div class="pc-right">
         <div class="pc-spots ${spots > 0 && spots <= 2 ? 'low' : ''}">${spots > 0 ? `${spots} of ${RULES.maxRiders} beds left` : 'Fully booked'}</div>
@@ -58,7 +61,7 @@ function renderStrip() {
   if (Auth.userId()) {
     const credits = Member.credits();
     const who = Member.profile?.name?.split(' ')[0] || Auth.email();
-    el.innerHTML = `<span>Signed in as <b>${who}</b> · ${credits} class credit${credits === 1 ? '' : 's'}</span><a href="../account/">My account →</a>`;
+    el.innerHTML = `<span>Signed in as <b>${escHtml(who)}</b> · ${credits} class credit${credits === 1 ? '' : 's'}</span><a href="../account/">My account →</a>`;
   } else {
     el.innerHTML = `<span>Booking needs a quick account. Sign in or create one on the next step.</span><a href="../account/">Sign in →</a>`;
   }

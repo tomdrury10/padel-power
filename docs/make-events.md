@@ -1,8 +1,10 @@
 # Make events: the contract
 
 Everything the database or an edge function sends to Make goes to one webhook
-(`hook.eu2.make.com/gv6vj6l1s6cdiambazifcxho189o9zo7`, scenario 9736516) and
-carries an `event` key. The router matches on `event` and nothing else. A
+(scenario 9736516) and carries an `event` key. The webhook address is held
+only in Supabase Vault as `pp_make_hook` and read through `pp_make_hook()`;
+it was rotated on 15 Sept 2026 after the old one was found publicly served,
+and must never be written into source or docs again. The router matches on `event` and nothing else. A
 payload whose `event` matches no route lands in the last route, which emails
 tom@getjuno.uk with the raw fields. If you add an event, add its route and add
 its name to that catch-all filter, or the catch-all will keep firing for it.

@@ -8,6 +8,9 @@
   }
 })();
 
+// honour the visitor's reduced-motion setting everywhere below
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
 // nav scroll state
 const hd = document.querySelector('header');
 addEventListener('scroll', () => hd.classList.toggle('scrolled', scrollY > 40), { passive: true });
@@ -17,9 +20,40 @@ hd.classList.toggle('scrolled', scrollY > 40);
 const mm = document.getElementById('mmenu');
 const burger = document.getElementById('burger');
 if (mm && burger) {
-  burger.onclick = () => mm.classList.add('open');
-  document.getElementById('mclose').onclick = () => mm.classList.remove('open');
-  mm.querySelectorAll('a').forEach(a => a.addEventListener('click', () => mm.classList.remove('open')));
+  const mclose = document.getElementById('mclose');
+  burger.setAttribute('aria-expanded', 'false');
+  burger.setAttribute('aria-controls', 'mmenu');
+  mm.setAttribute('role', 'dialog');
+  mm.setAttribute('aria-modal', 'true');
+  mm.setAttribute('aria-label', 'Menu');
+  const focusables = () => [...mm.querySelectorAll('button, a[href]')].filter(el => el.offsetParent !== null || mm.classList.contains('open'));
+  const openMenu = () => {
+    mm.classList.add('open');
+    burger.setAttribute('aria-expanded', 'true');
+    document.body.style.overflow = 'hidden';
+    (mclose || focusables()[0])?.focus();
+  };
+  const closeMenu = (restore = true) => {
+    if (!mm.classList.contains('open')) return;
+    mm.classList.remove('open');
+    burger.setAttribute('aria-expanded', 'false');
+    document.body.style.overflow = '';
+    if (restore) burger.focus();
+  };
+  burger.onclick = openMenu;
+  if (mclose) mclose.onclick = () => closeMenu();
+  mm.querySelectorAll('a').forEach(a => a.addEventListener('click', () => closeMenu(false)));
+  document.addEventListener('keydown', e => {
+    if (!mm.classList.contains('open')) return;
+    if (e.key === 'Escape') { e.preventDefault(); closeMenu(); return; }
+    if (e.key !== 'Tab') return;
+    // keep focus inside the open menu
+    const f = focusables();
+    if (!f.length) return;
+    const first = f[0], last = f[f.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  });
 }
 
 // duplicate marquee tracks for seamless loop
@@ -52,7 +86,7 @@ addEventListener('scroll', () => {
 addEventListener('hashchange', () => setTimeout(revealPassed, 60));
 addEventListener('load', () => setTimeout(revealPassed, 120));
 
-if (new URLSearchParams(location.search).has('flat')) {
+if (reduceMotion || new URLSearchParams(location.search).has('flat')) {
   document.documentElement.classList.add('flat');
   document.querySelectorAll('.rv').forEach(el => el.classList.add('in'));
 } else {
@@ -70,7 +104,7 @@ document.querySelectorAll('[data-carousel]').forEach(car => {
     track.style.transform = `translateX(-${i * 100}%)`;
     dots.forEach((d, k) => d.classList.toggle('on', k === i));
   };
-  const auto = () => { clearInterval(timer); timer = setInterval(() => go(i + 1), 4500); };
+  const auto = () => { clearInterval(timer); if (reduceMotion) return; timer = setInterval(() => go(i + 1), 4500); };
   car.querySelector('.car-prev').addEventListener('click', () => { go(i - 1); auto(); });
   car.querySelector('.car-next').addEventListener('click', () => { go(i + 1); auto(); });
   dots.forEach((d, k) => d.addEventListener('click', () => { go(k); auto(); }));
@@ -95,8 +129,17 @@ if (jumpTo) {
 }
 
 // Safari/iOS: force hero video playback (attributes alone are not always honoured)
+// The source is chosen here: a 720p file on phones, the full one on larger
+// screens, and no video at all (poster only) for reduced motion or data saver.
 const heroVid = document.querySelector('.hero video');
-if (heroVid) {
+const heroSrc = heroVid && (matchMedia('(max-width: 700px)').matches
+  ? (heroVid.dataset.srcMobile || heroVid.dataset.src)
+  : heroVid.dataset.src);
+const saveData = !!(navigator.connection && navigator.connection.saveData);
+if (heroVid && (reduceMotion || saveData || !heroSrc)) {
+  heroVid.removeAttribute('autoplay');
+} else if (heroVid) {
+  heroVid.src = heroSrc;
   heroVid.muted = true;
   heroVid.defaultMuted = true;
   heroVid.setAttribute('muted', '');
@@ -107,3 +150,47 @@ if (heroVid) {
   document.addEventListener('visibilitychange', () => { if (!document.hidden) tryPlay(); });
   heroVid.addEventListener('loadedmetadata', tryPlay);
 }
+
+
+// ---------------- cookie choice for Google Analytics ----------------
+// Every page starts with analytics consent denied (see the gtag snippet in
+// each page head). Nothing is stored by Google until the visitor accepts
+// here; the choice is kept in this browser and can be changed from the
+// footer link at any time.
+(function () {
+  const KEY = 'pp_consent';
+  const read = () => { try { return localStorage.getItem(KEY); } catch (e) { return null; } };
+  const save = v => { try { localStorage.setItem(KEY, v); } catch (e) {} };
+  const apply = v => {
+    if (typeof gtag === 'function') gtag('consent', 'update', { analytics_storage: v === 'granted' ? 'granted' : 'denied' });
+  };
+  let box = null;
+  const close = () => { if (box) { box.remove(); box = null; } };
+  const show = () => {
+    if (box) return;
+    box = document.createElement('div');
+    box.className = 'ck';
+    box.setAttribute('role', 'dialog');
+    box.setAttribute('aria-live', 'polite');
+    box.setAttribute('aria-label', 'Cookie choices');
+    box.innerHTML = '<p>We use Google Analytics to see how the site is used. It sets cookies only if you say yes. <a href="/privacy-policy/">Privacy policy</a></p>'
+      + '<div class="ck-btns"><button type="button" class="btn btn-blue" data-ck="granted">Accept analytics</button>'
+      + '<button type="button" class="btn btn-ghost" data-ck="denied">No thanks</button></div>';
+    box.querySelectorAll('[data-ck]').forEach(b => b.addEventListener('click', () => {
+      save(b.dataset.ck); apply(b.dataset.ck); close();
+    }));
+    document.body.appendChild(box);
+  };
+  const choice = read();
+  if (choice === 'granted' || choice === 'denied') apply(choice); else show();
+  // footer link to change the choice later
+  const priv = document.querySelector('footer a[href$="privacy-policy/"]');
+  if (priv) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'ck-link';
+    btn.textContent = 'Cookie choices';
+    btn.addEventListener('click', show);
+    priv.insertAdjacentElement('afterend', btn);
+  }
+})();

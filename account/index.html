@@ -6,6 +6,9 @@
 <script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
+  // analytics consent starts denied; site.js lifts it only after the visitor accepts
+  gtag('consent', 'default', { analytics_storage: 'denied', ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied' });
+  try { if (localStorage.getItem('pp_consent') === 'granted') gtag('consent', 'update', { analytics_storage: 'granted' }); } catch (e) {}
   gtag('js', new Date());
 
   gtag('config', 'G-Z9MLZFVD2W');
@@ -22,7 +25,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="icon" type="image/png" href="../assets/favicon.png">
 <link rel="apple-touch-icon" href="../assets/favicon.png">
-<link rel="stylesheet" href="../assets/styles.css?v=41">
+<link rel="stylesheet" href="../assets/styles.css?v=48">
 </head>
 <body>
 
@@ -68,7 +71,7 @@
 </div>
 
 <section class="event">
-  <div class="ev-bg"><img src="../assets/pp-sign-wood.jpg" alt=""></div>
+  <div class="ev-bg"><img src="../assets/pp-sign-wood.jpg" alt="" loading="lazy" decoding="async"></div>
   <div class="wrap">
     <a class="ev-back" href="../pilates/#book"><span>←</span> All classes</a>
 
@@ -87,11 +90,11 @@
       </div>
       <aside class="ev-card">
         <div class="ev-tabs" role="tablist">
-          <button type="button" class="ev-tab on" data-tab="in">Sign in</button>
-          <button type="button" class="ev-tab" data-tab="up">Create account</button>
+          <button type="button" class="ev-tab on" data-tab="in" role="tab" aria-selected="true" aria-controls="acSignIn" id="acTabIn">Sign in</button>
+          <button type="button" class="ev-tab" data-tab="up" role="tab" aria-selected="false" aria-controls="acSignUp" id="acTabUp" tabindex="-1">Create account</button>
         </div>
 
-        <form class="cform" id="acSignIn">
+        <form class="cform" id="acSignIn" role="tabpanel" aria-labelledby="acTabIn">
           <div><label for="siEmail">Email</label><input id="siEmail" name="siEmail" type="email" placeholder="you@email.com" autocomplete="username" required></div>
           <div><label for="siPass">Password</label><input id="siPass" name="siPass" type="password" placeholder="Your password" autocomplete="current-password" required></div>
           <div class="lg-error" id="siError" hidden></div>
@@ -99,7 +102,7 @@
           <button type="button" class="ev-forgot" id="acForgotLink">Forgotten your password?</button>
         </form>
 
-        <form class="cform" id="acSignUp" hidden>
+        <form class="cform" id="acSignUp" hidden role="tabpanel" aria-labelledby="acTabUp">
           <p class="ev-authnote">One quick account keeps your bookings, credits and health form in one place.</p>
           <div><label for="suName">Name</label><input id="suName" name="suName" type="text" placeholder="Your name" autocomplete="name" required maxlength="80"></div>
           <div><label for="suEmail">Email</label><input id="suEmail" name="suEmail" type="email" placeholder="you@email.com" autocomplete="email" required></div>
@@ -302,7 +305,7 @@
   </div>
 </footer>
 
-<script src="../assets/site.js?v=4"></script>
+<script src="../assets/site.js?v=5"></script>
 <script src="../assets/pilates-core.js?v=26"></script>
 <script src="../assets/phone-verify.js?v=1"></script>
 <script src="../assets/account.js?v=7"></script>

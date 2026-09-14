@@ -38,11 +38,18 @@
     const tabs = card.querySelectorAll('.ev-tab');
     const panes = { in: $('acSignIn'), up: $('acSignUp'), reset: $('acReset') };
     const pick = which => {
-      tabs.forEach(b => b.classList.toggle('on', b.dataset.tab === which));
+      tabs.forEach(b => { const on = b.dataset.tab === which; b.classList.toggle('on', on); b.setAttribute('aria-selected', String(on)); b.tabIndex = on ? 0 : -1; });
       Object.entries(panes).forEach(([k, el]) => { el.hidden = k !== which; });
       $('acNotice').hidden = true;
     };
     tabs.forEach(b => b.addEventListener('click', () => pick(b.dataset.tab)));
+    // proper tabs: arrow keys move between them, the active one is the only tab stop
+    tabs.forEach((b, i) => b.addEventListener('keydown', e => {
+      if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
+      e.preventDefault();
+      const n = e.key === 'Home' ? 0 : e.key === 'End' ? tabs.length - 1 : (i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length;
+      tabs[n].focus(); pick(tabs[n].dataset.tab);
+    }));
     card.querySelectorAll('[data-tab="in"].ev-forgot').forEach(b => b.addEventListener('click', () => pick('in')));
     $('acForgotLink').addEventListener('click', () => pick('reset'));
     pick(q.get('reset') ? 'reset' : q.get('signup') ? 'up' : 'in');

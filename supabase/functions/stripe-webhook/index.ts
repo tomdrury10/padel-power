@@ -15,12 +15,24 @@
 //   swap the card on a live league subscription.
 // invoice.paid / invoice.payment_failed -> update the league registration.
 // customer.subscription.deleted -> mark league billing ended.
+//
+// Stripe delivers events at least once and sometimes concurrently, so:
+//   - refunds carry an idempotency key per checkout session and are only
+//     recorded once Stripe confirms them. A failed refund leaves a cancelled,
+//     unrefunded row and returns 500 so Stripe retries; the retry (and the
+//     retry_orphan_refunds cron) finishes the refund.
+//   - league subscriptions carry an idempotency key per registration and
+//     are written back with a conditional update, so two deliveries cannot
+//     bill a player twice.
+//   - invoices are recorded through league_record_invoice, which keys on the
+//     invoice id, so a redelivered invoice cannot be counted twice and a late
+//     failure cannot overwrite a success.
+// The Make webhook address is read from the database (Vault), never embedded.
 
 const SB_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const STRIPE_KEY = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
 const WH_SECRET = Deno.env.get("STRIPE_WEBHOOK_SECRET") ?? "";
-const MAKE_HOOK = "https://hook.eu2.make.com/gv6vj6l1s6cdiambazifcxho189o9zo7";
 const SITE = "https://www.padelpower.uk";
 
 const enc = new TextEncoder();
@@ -42,17 +54,42 @@ async function validSignature(payload: string, header: string | null): Promise<b
   });
 }
 
-async function stripe(path: string, params?: Record<string, string>) {
+// deno-lint-ignore no-explicit-any
+async function stripe(path: string, params?: Record<string, string>, opts: { method?: string; idempotencyKey?: string } = {}): Promise<any> {
+  const method = opts.method ?? (params ? "POST" : "GET");
+  const headers: Record<string, string> = { Authorization: `Bearer ${STRIPE_KEY}`, "Content-Type": "application/x-www-form-urlencoded" };
+  if (opts.idempotencyKey) headers["Idempotency-Key"] = opts.idempotencyKey;
   const res = await fetch(`https://api.stripe.com/v1/${path}`, {
-    method: params ? "POST" : "GET",
-    headers: { Authorization: `Bearer ${STRIPE_KEY}`, "Content-Type": "application/x-www-form-urlencoded" },
-    body: params ? new URLSearchParams(params) : undefined,
+    method,
+    headers,
+    body: params && method !== "GET" ? new URLSearchParams(params) : undefined,
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data?.error?.message || "stripe_error");
+  if (!res.ok) {
+    const err = new Error(data?.error?.message || "stripe_error") as Error & { code?: string; status?: number };
+    err.code = data?.error?.code;
+    err.status = res.status;
+    throw err;
+  }
   return data;
 }
-const refund = (paymentIntent: string) => stripe("refunds", { payment_intent: paymentIntent }).catch(() => {});
+
+// Refund a payment once. The idempotency key is the checkout session, so a
+// redelivered webhook re-asks Stripe for the same refund instead of a second
+// one. Only a confirmed refund (or Stripe saying it is already refunded)
+// counts as success.
+async function refundOnce(paymentIntent: string, sessionId: string): Promise<{ ok: boolean; id: string | null }> {
+  if (!paymentIntent || !STRIPE_KEY) return { ok: false, id: null };
+  try {
+    const rf = await stripe("refunds", { payment_intent: paymentIntent }, { idempotencyKey: `refund-${sessionId}` });
+    return { ok: true, id: rf?.id ?? null };
+  } catch (err) {
+    const e = err as Error & { code?: string };
+    if (e.code === "charge_already_refunded") return { ok: true, id: null };
+    console.error(`refund failed for ${paymentIntent}: ${e.message}`);
+    return { ok: false, id: null };
+  }
+}
 
 async function db(path: string, init: RequestInit = {}) {
   const res = await fetch(`${SB_URL}/rest/v1/${path}`, {
@@ -74,7 +111,52 @@ const patchReg = (id: string, body: Record<string, unknown>) =>
 const log = (reg: string, action: string, detail: Record<string, unknown> = {}) =>
   db("rpc/league_log", { method: "POST", body: JSON.stringify({ p_reg: reg, p_action: action, p_detail: detail, p_actor: null }) }).catch(() => {});
 
+let makeHookCache: string | null = null;
+async function makeHook(): Promise<string | null> {
+  if (makeHookCache) return makeHookCache;
+  try {
+    const url = await db("rpc/pp_make_hook", { method: "POST", body: "{}" });
+    makeHookCache = typeof url === "string" && url.startsWith("https://") ? url : null;
+  } catch (err) {
+    console.error(`make hook lookup failed: ${String((err as Error).message)}`);
+  }
+  return makeHookCache;
+}
+
 const UUID = /^[0-9a-f-]{36}$/;
+
+// A paid checkout that could not become a booking. Refund it, and only when
+// Stripe confirms, record the row as cancelled + refunded. If the refund
+// fails, record the row as cancelled but NOT refunded (staff can see it and
+// the refund cron picks it up) and return 500 so Stripe redelivers.
+async function refundAndRecord(table: string, row: Record<string, unknown>, s: Record<string, unknown>, what: string): Promise<Response> {
+  const rf = await refundOnce(String(s.payment_intent || ""), String(s.id));
+  const now = new Date().toISOString();
+  if (rf.ok) {
+    await insert(table, { ...row, cancelled_at: now, refunded_at: now, refund_id: rf.id }).catch(() => {});
+    return new Response("refunded", { status: 200 });
+  }
+  console.error(`${what} ${s.id}: refund not confirmed, recording as cancelled/unrefunded and asking Stripe to retry`);
+  await insert(table, { ...row, cancelled_at: now }).catch(() => {});
+  return new Response("refund pending", { status: 500 });
+}
+
+// The row for this checkout session already exists. If it is a cancelled
+// booking whose refund never completed, finish the refund now.
+async function settleExisting(table: string, s: Record<string, unknown>): Promise<Response> {
+  const rows = await db(`${table}?stripe_session_id=eq.${encodeURIComponent(String(s.id))}&select=id,paid_at,refunded_at,cancelled_at,payment_intent_id`).catch(() => []);
+  const bk = rows?.[0];
+  if (!bk || !bk.cancelled_at || bk.refunded_at || !bk.paid_at || !bk.payment_intent_id) {
+    return new Response("already booked", { status: 200 });
+  }
+  const rf = await refundOnce(String(bk.payment_intent_id), String(s.id));
+  if (!rf.ok) return new Response("refund pending", { status: 500 });
+  await db(`${table}?id=eq.${bk.id}`, {
+    method: "PATCH", headers: { Prefer: "return=minimal" },
+    body: JSON.stringify({ refunded_at: new Date().toISOString(), refund_id: rf.id }),
+  }).catch(() => {});
+  return new Response("refunded on retry", { status: 200 });
+}
 
 // ---------------- leagues ----------------
 async function leagueCardSaved(s: Record<string, unknown>, m: Record<string, string>) {
@@ -82,6 +164,13 @@ async function leagueCardSaved(s: Record<string, unknown>, m: Record<string, str
   if (!UUID.test(regId || "")) return new Response("no registration", { status: 200 });
   const [reg] = await db(`league_registrations?id=eq.${regId}&select=*`);
   if (!reg) return new Response("no registration", { status: 200 });
+
+  // a setup completed for a registration that has since been cancelled
+  // must never start billing
+  if (reg.cancelled_at) {
+    await log(reg.id, "setup_ignored_cancelled", { session: s.id, type: m.type });
+    return new Response("registration cancelled", { status: 200 });
+  }
 
   const si = await stripe(`setup_intents/${s.setup_intent}`);
   const pmId = String(si.payment_method);
@@ -109,7 +198,7 @@ async function leagueCardSaved(s: Record<string, unknown>, m: Record<string, str
 
   let product = league.stripe_product_id as string | null;
   if (!product) {
-    const p = await stripe("products", { name: `Padel League: ${league.name}` });
+    const p = await stripe("products", { name: `Padel League: ${league.name}` }, { idempotencyKey: `league-product-${league.id}` });
     product = p.id;
     await db(`leagues?id=eq.${league.id}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ stripe_product_id: product }) });
   }
@@ -137,12 +226,31 @@ async function leagueCardSaved(s: Record<string, unknown>, m: Record<string, str
     "metadata[player]": reg.name,
   };
   if (startUnix > nowUnix + 120) params.trial_end = String(startUnix);
-  const sub = await stripe("subscriptions", params);
 
-  await patchReg(reg.id, {
-    stripe_subscription_id: sub.id, stripe_payment_method_id: pmId, card_label: label,
-    card_status: "authorised", stripe_customer_id: customer,
+  // One subscription per registration: the idempotency key makes Stripe
+  // hand back the same subscription to a concurrent or repeated delivery
+  // (or refuse the second while the first is in flight, which returns 500
+  // and gets retried once the first has been written back).
+  const sub = await stripe("subscriptions", params, { idempotencyKey: `league-sub-${reg.id}` });
+
+  // write back only if nobody else has, so the registration never points
+  // at one subscription while another one bills
+  const claimed = await db(`league_registrations?id=eq.${reg.id}&stripe_subscription_id=is.null`, {
+    method: "PATCH", headers: { Prefer: "return=representation" },
+    body: JSON.stringify({
+      stripe_subscription_id: sub.id, stripe_payment_method_id: pmId, card_label: label,
+      card_status: "authorised", stripe_customer_id: customer,
+    }),
   });
+  if (!Array.isArray(claimed) || claimed.length === 0) {
+    const [current] = await db(`league_registrations?id=eq.${reg.id}&select=stripe_subscription_id`);
+    if (current?.stripe_subscription_id && current.stripe_subscription_id !== sub.id) {
+      console.error(`duplicate league subscription ${sub.id} for ${reg.id}; cancelling it`);
+      await stripe(`subscriptions/${sub.id}`, undefined, { method: "DELETE" }).catch((e) => console.error(`could not cancel duplicate ${sub.id}: ${e.message}`));
+      await log(reg.id, "duplicate_subscription_cancelled", { subscription: sub.id, kept: current.stripe_subscription_id });
+    }
+    return new Response("already scheduled", { status: 200 });
+  }
   await log(reg.id, "card_authorised", { card: label });
   await log(reg.id, "billing_scheduled", { subscription: sub.id, first_payment: startUnix > nowUnix ? league.season_start : "now", weeks: league.weeks, weekly_price_pence: reg.weekly_price_pence });
   return new Response("scheduled", { status: 200 });
@@ -153,27 +261,35 @@ async function leagueInvoice(inv: Record<string, unknown>, paid: boolean) {
   if (!subId) return new Response("no subscription", { status: 200 });
   const [reg] = await db(`league_registrations?stripe_subscription_id=eq.${subId}&select=*`);
   if (!reg) return new Response("not a league", { status: 200 });
+  if (paid && Number(inv.amount_paid) <= 0) return new Response("zero invoice", { status: 200 });
 
-  if (paid) {
-    if (Number(inv.amount_paid) <= 0) return new Response("zero invoice", { status: 200 });
-    await patchReg(reg.id, { payments_taken: reg.payments_taken + 1, last_payment_status: "paid", last_payment_at: new Date().toISOString(), card_status: "authorised" });
-    await log(reg.id, "payment_collected", { amount_pence: inv.amount_paid, invoice: inv.id, number: reg.payments_taken + 1 });
-    return new Response("paid", { status: 200 });
-  }
-
-  await patchReg(reg.id, { last_payment_status: "failed", last_payment_at: new Date().toISOString(), card_status: "failed" });
-  await log(reg.id, "payment_failed", { amount_pence: inv.amount_due, invoice: inv.id, attempt: inv.attempt_count });
-  const [league] = await db(`leagues?id=eq.${reg.league_id}&select=name`);
-  await fetch(MAKE_HOOK, {
-    method: "POST", headers: { "Content-Type": "application/json" },
+  // recorded in the database keyed on the invoice id: a redelivery is a
+  // no-op, and a failure notice for an invoice already paid is ignored
+  const rec = await db("rpc/league_record_invoice", {
+    method: "POST",
     body: JSON.stringify({
-      event: "league_payment_failed",
-      registration_id: reg.id, first_name: String(reg.name).split(" ")[0], full_name: reg.name,
-      email: reg.email, phone: reg.phone, phone_e164: String(reg.phone).replace(/\s+/g, ""),
-      league: league?.name ?? "", amount: (Number(inv.amount_due) / 100).toFixed(2),
-      update_url: `${SITE}/northampton-padel-league/register/`,
+      p_reg: reg.id, p_invoice: String(inv.id), p_status: paid ? "paid" : "failed",
+      p_amount_pence: Number(paid ? inv.amount_paid : inv.amount_due) || 0,
+      p_attempt: Number(inv.attempt_count) || 0,
     }),
-  }).catch(() => {});
+  });
+  if (!rec?.recorded) return new Response(`invoice ignored: ${rec?.reason ?? "duplicate"}`, { status: 200 });
+  if (paid) return new Response("paid", { status: 200 });
+
+  const [league] = await db(`leagues?id=eq.${reg.league_id}&select=name`);
+  const hook = await makeHook();
+  if (hook) {
+    await fetch(hook, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        event: "league_payment_failed",
+        registration_id: reg.id, first_name: String(reg.name).split(" ")[0], full_name: reg.name,
+        email: reg.email, phone: reg.phone, phone_e164: String(reg.phone).replace(/\s+/g, ""),
+        league: league?.name ?? "", amount: (Number(inv.amount_due) / 100).toFixed(2),
+        update_url: `${SITE}/northampton-padel-league/register/`,
+      }),
+    }).catch(() => {});
+  }
   return new Response("failed recorded", { status: 200 });
 }
 
@@ -213,70 +329,71 @@ Deno.serve(async (req) => {
     return new Response("retry", { status: 500 });
   }
 
-  // ---------------- pilates (unchanged) ----------------
+  // ---------------- pilates + soft play ----------------
   const s = obj;
   if (s.payment_status !== "paid") return new Response("not paid", { status: 200 });
   const m = s.metadata || {};
   const userId = UUID.test(String(m.user_id || "")) ? m.user_id : null;
 
-  if (m.type === "pack") {
-    if (!userId) {
-      console.error(`pack session ${s.id} has no user_id`);
-      return new Response("no user", { status: 200 });
+  try {
+    if (m.type === "pack") {
+      if (!userId) {
+        console.error(`pack session ${s.id} has no user_id`);
+        return new Response("no user", { status: 200 });
+      }
+      const credits = Math.max(1, Math.min(100, parseInt(m.credits, 10) || 6));
+      const months = Math.max(1, Math.min(24, parseInt(m.months, 10) || 3));
+      const expires = new Date();
+      expires.setMonth(expires.getMonth() + months);
+      const res = await insert("credit_packs", {
+        user_id: userId, credits_total: credits, credits_left: credits, amount_pence: s.amount_total,
+        stripe_session_id: s.id, payment_intent_id: s.payment_intent, expires_at: expires.toISOString(),
+      });
+      if (res.ok) return new Response("credited", { status: 200 });
+      const body = await res.text();
+      if (res.status === 409 || body.includes("credit_packs_session_uidx")) return new Response("already credited", { status: 200 });
+      console.error(`pack insert failed: ${res.status} ${body}`);
+      return new Response("retry", { status: 500 });
     }
-    const credits = Math.max(1, Math.min(100, parseInt(m.credits, 10) || 6));
-    const months = Math.max(1, Math.min(24, parseInt(m.months, 10) || 3));
-    const expires = new Date();
-    expires.setMonth(expires.getMonth() + months);
-    const res = await insert("credit_packs", {
-      user_id: userId, credits_total: credits, credits_left: credits, amount_pence: s.amount_total,
-      stripe_session_id: s.id, payment_intent_id: s.payment_intent, expires_at: expires.toISOString(),
-    });
-    if (res.ok) return new Response("credited", { status: 200 });
-    const body = await res.text();
-    if (res.status === 409 || body.includes("credit_packs_session_uidx")) return new Response("already credited", { status: 200 });
-    console.error(`pack insert failed: ${res.status} ${body}`);
-    return new Response("retry", { status: 500 });
-  }
 
-  if (m.type === "softplay") {
-    const spBooking = {
-      session_id: m.session_id, user_id: userId, name: m.name || "Unknown",
-      email: m.email || s.customer_email || "", phone: m.phone || "",
-      children: Math.max(1, Math.min(30, parseInt(m.children, 10) || 1)),
-      child_names: m.child_names || null, source: "Online",
-      amount_pence: s.amount_total, stripe_session_id: s.id, payment_intent_id: s.payment_intent,
-      paid_at: new Date().toISOString(), consent_at: new Date().toISOString(),
+    if (m.type === "softplay") {
+      const spBooking = {
+        session_id: m.session_id, user_id: userId, name: m.name || "Unknown",
+        email: m.email || s.customer_email || "", phone: m.phone || "",
+        children: Math.max(1, Math.min(30, parseInt(m.children, 10) || 1)),
+        child_names: m.child_names || null, source: "Online",
+        amount_pence: s.amount_total, stripe_session_id: s.id, payment_intent_id: s.payment_intent,
+        paid_at: new Date().toISOString(), consent_at: new Date().toISOString(),
+      };
+      const res = await insert("softplay_bookings", spBooking);
+      if (res.ok) return new Response("softplay booked", { status: 200 });
+      const body = await res.text();
+      if (res.status === 409 || body.includes("softplay_bookings_session_uidx")) return await settleExisting("softplay_bookings", s);
+      if (/session_full|session_taken|session_cancelled|session_in_past|already_booked|no_such_session/.test(body)) {
+        console.error(`refunding soft play ${s.id}: ${body}`);
+        return await refundAndRecord("softplay_bookings", spBooking, s, "soft play");
+      }
+      console.error(`softplay insert failed: ${res.status} ${body}`);
+      return new Response("retry", { status: 500 });
+    }
+
+    const booking = {
+      class_id: m.class_id, name: m.name || "Unknown", email: m.email || s.customer_email || "", phone: m.phone || "",
+      source: "Online", user_id: userId, amount_pence: s.amount_total, stripe_session_id: s.id,
+      payment_intent_id: s.payment_intent, paid_at: new Date().toISOString(), paid_with: "card",
     };
-    const res = await insert("softplay_bookings", spBooking);
-    if (res.ok) return new Response("softplay booked", { status: 200 });
+    const res = await insert("bookings", booking);
+    if (res.ok) return new Response("booked", { status: 200 });
     const body = await res.text();
-    if (res.status === 409 || body.includes("softplay_bookings_session_uidx")) return new Response("already booked", { status: 200 });
-    if (/session_full|session_taken|session_cancelled|session_in_past|already_booked|no_such_session/.test(body)) {
-      console.error(`refunding soft play ${s.id}: ${body}`);
-      await refund(s.payment_intent);
-      await insert("softplay_bookings", { ...spBooking, cancelled_at: new Date().toISOString(), refunded_at: new Date().toISOString() }).catch(() => {});
-      return new Response("refunded", { status: 200 });
+    if (res.status === 409 || body.includes("bookings_stripe_session_uidx")) return await settleExisting("bookings", s);
+    if (/class_full|class_cancelled|class_in_past|already_booked/.test(body)) {
+      console.error(`refunding ${s.id}: ${body}`);
+      return await refundAndRecord("bookings", booking, s, "class");
     }
-    console.error(`softplay insert failed: ${res.status} ${body}`);
+    console.error(`webhook insert failed: ${res.status} ${body}`);
+    return new Response("retry", { status: 500 });
+  } catch (err) {
+    console.error(`webhook failed: ${String((err as Error).message)}`);
     return new Response("retry", { status: 500 });
   }
-
-  const booking = {
-    class_id: m.class_id, name: m.name || "Unknown", email: m.email || s.customer_email || "", phone: m.phone || "",
-    source: "Online", user_id: userId, amount_pence: s.amount_total, stripe_session_id: s.id,
-    payment_intent_id: s.payment_intent, paid_at: new Date().toISOString(), paid_with: "card",
-  };
-  const res = await insert("bookings", booking);
-  if (res.ok) return new Response("booked", { status: 200 });
-  const body = await res.text();
-  if (res.status === 409 || body.includes("bookings_stripe_session_uidx")) return new Response("already booked", { status: 200 });
-  if (/class_full|class_cancelled|class_in_past|already_booked/.test(body)) {
-    console.error(`refunding ${s.id}: ${body}`);
-    await refund(s.payment_intent);
-    await insert("bookings", { ...booking, cancelled_at: new Date().toISOString(), refunded_at: new Date().toISOString() }).catch(() => {});
-    return new Response("refunded", { status: 200 });
-  }
-  console.error(`webhook insert failed: ${res.status} ${body}`);
-  return new Response("retry", { status: 500 });
 });

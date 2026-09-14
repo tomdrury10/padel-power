@@ -1,0 +1,6 @@
+# never published: backend source, migrations, internal docs, editor config
+supabase
+docs
+.claude
+.DS_Store
+*.md
