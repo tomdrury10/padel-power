@@ -173,7 +173,8 @@ const GUIDES = [
     title: 'Putting soft play sessions on the timetable',
     intro: 'Soft play is booked slot by slot. You decide which slots exist: supervised sessions run by our team, or hire slots where parents book the whole space and supervise themselves.',
     steps: [
-      'Open Soft play in the left hand menu and press Add sessions.',
+      'Open Soft play in the left hand menu. It is the same week and month calendar as Pilates: green blocks are supervised sessions, orange are hire slots.',
+      'Press Add sessions.',
       'Pick the date, start time and length, then choose Supervised session or Hire slot.',
       'Capacity is the most children that slot takes. For a hire slot it is the most one family or group can bring.',
       'Repeat weekly puts the same slot on for the next 4, 8 or 12 weeks in one go.',
@@ -190,7 +191,7 @@ const GUIDES = [
     cat: 'Soft play',
     roles: ['admin'],
     title: 'On the day: bookings, check-in and cancelling',
-    intro: 'Click any session to open it. Everything about that slot is in there.',
+    intro: 'The soft play calendar works exactly like the Pilates schedule: week or month view, click a session and the panel on the right shows everything about it.',
     steps: [
       'The list shows each parent, their mobile, how many children and any names they gave, and whether they paid online or are paying at the desk.',
       'Press Check in as each family arrives. The count at the top shows how many children are here.',

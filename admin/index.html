@@ -280,38 +280,38 @@
     <section class="d2-page" id="pgSoftplay" hidden>
       <div class="d2-toolbar">
         <div class="d2-wknav">
-          <button class="d2-icon" id="spPrev" aria-label="Previous week"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M15 6l-6 6 6 6"/></svg></button>
-          <button class="d2-btn ghost" id="spToday">This week</button>
-          <button class="d2-icon" id="spNext" aria-label="Next week"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M9 6l6 6-6 6"/></svg></button>
+          <button class="d2-icon" id="spPrev" aria-label="Previous"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M15 6l-6 6 6 6"/></svg></button>
+          <button class="d2-btn ghost" id="spToday">Today</button>
+          <button class="d2-icon" id="spNext" aria-label="Next"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M9 6l6 6-6 6"/></svg></button>
           <span class="d2-wklabel" id="spWeekLabel"></span>
         </div>
-        <button class="d2-btn primary" id="spAddBtn">
+        <div class="d2-filters" id="spViewToggle">
+          <button class="on" data-spview="week">Week</button>
+          <button data-spview="month">Month</button>
+        </div>
+        <button class="d2-btn ghost" id="spAddBtn">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="14" height="14"><path d="M12 5v14M5 12h14"/></svg>
           Add sessions
         </button>
       </div>
-      <div class="d2-cols">
-        <div class="d2-card">
-          <div class="d2-card-head"><h2>Sessions</h2><span class="d2-tag" id="spOpenTag"></span></div>
-          <p class="d2-sub">Supervised sessions need the minimum number of children by the confirm or cancel point or they are cancelled and refunded automatically. A hire slot is the whole space for one booking. Click a session to see who is booked, check them in, add a desk booking or cancel it.</p>
-          <div id="spSessions"></div>
-        </div>
-        <div class="d2-col-stack">
-          <div class="d2-card">
-            <div class="d2-card-head"><h2>Soft play settings</h2></div>
-            <p class="d2-sub">Nothing sells online until "Online booking open" is ticked and the supervised price is set. Hire is charged per child per hour; a 90 minute hire slot costs one and a half times the hourly price.</p>
-            <form class="d2-rules" id="spRules">
-              <label>Supervised price per child (£)<input name="spSupervised" type="number" min="0" max="100" step="0.01" placeholder="Not set yet"></label>
-              <label>Hire price per child per hour (£)<input name="spHire" type="number" min="0" max="100" step="0.01" required></label>
-              <label>Minimum children to run<input name="spMin" type="number" min="1" max="20" required></label>
-              <label>Default capacity<input name="spMax" type="number" min="1" max="30" required></label>
-              <label>Age from<input name="spAgeMin" type="number" min="0" max="16" required></label>
-              <label>Age to<input name="spAgeMax" type="number" min="1" max="18" required></label>
-              <label class="d2-check" style="grid-column:1 / -1"><input name="spOpen" type="checkbox"><span>Online booking open</span></label>
-              <div class="d2-form-row"><button class="d2-btn primary" type="submit">Save soft play settings</button><span class="d2-hint" id="spRulesSaved" hidden>Saved</span></div>
-            </form>
-          </div>
-        </div>
+      <div class="d2-legend"><span class="d2-leg-item tc-found"><i></i>Supervised</span><span class="d2-leg-item tc-str"><i></i>Hire slot</span><span class="d2-tag st" id="spOpenTag" style="margin-left:auto"></span></div>
+      <div class="d2-sched">
+        <div class="d2-cal" id="spGrid"></div>
+        <aside class="d2-detail" id="spDetail"></aside>
+      </div>
+      <div class="d2-card" style="margin-top:16px">
+        <div class="d2-card-head"><h2>Soft play settings</h2></div>
+        <p class="d2-sub">Nothing sells online until "Online booking open" is ticked and the supervised price is set. Hire is charged per child per hour; a 90 minute hire slot costs one and a half times the hourly price. Supervised sessions under the minimum are cancelled and refunded automatically at the confirm or cancel point.</p>
+        <form class="d2-rules" id="spRules">
+          <label>Supervised price per child (£)<input name="spSupervised" type="number" min="0" max="100" step="0.01" placeholder="Not set yet"></label>
+          <label>Hire price per child per hour (£)<input name="spHire" type="number" min="0" max="100" step="0.01" required></label>
+          <label>Minimum children to run<input name="spMin" type="number" min="1" max="20" required></label>
+          <label>Default capacity<input name="spMax" type="number" min="1" max="30" required></label>
+          <label>Age from<input name="spAgeMin" type="number" min="0" max="16" required></label>
+          <label>Age to<input name="spAgeMax" type="number" min="1" max="18" required></label>
+          <label class="d2-check" style="grid-column:1 / -1"><input name="spOpen" type="checkbox"><span>Online booking open</span></label>
+          <div class="d2-form-row"><button class="d2-btn primary" type="submit">Save soft play settings</button><span class="d2-hint" id="spRulesSaved" hidden>Saved</span></div>
+        </form>
       </div>
     </section>
 
@@ -621,6 +621,6 @@
 <script src="../assets/admin.js?v=38"></script>
 <script src="../assets/admin-guides.js?v=3"></script>
 <script src="../assets/admin-leagues.js?v=4"></script>
-<script src="../assets/admin-softplay.js?v=1"></script>
+<script src="../assets/admin-softplay.js?v=2"></script>
 </body>
 </html>

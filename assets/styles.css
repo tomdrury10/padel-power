@@ -1952,17 +1952,3 @@ nav.links a{white-space:nowrap}
 .sp-stepper b{font-variation-settings:'wdth' 116;font-style:italic;font-weight:850;font-size:28px;min-width:34px;text-align:center}
 .sp-total{margin-left:auto;font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--paper-faint)}
 
-/* studio manager: soft play */
-.sp-day{margin-bottom:18px}
-.sp-day h4{margin:0 0 8px;font-size:12px;font-family:var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--tx3)}
-.sp-sess{border:1px solid var(--ln);border-radius:12px;margin-bottom:8px;background:var(--srf);overflow:hidden}
-.sp-sess.off{opacity:.6}
-.sp-sess.open{border-color:var(--blue)}
-.sp-sess-head{display:grid;grid-template-columns:64px 1fr auto auto;gap:12px;align-items:center;width:100%;padding:12px 14px;background:none;border:none;text-align:left;cursor:pointer;color:var(--tx)}
-.sp-sess-head .tm{font-weight:700;font-size:14px}
-.sp-sess-head .tm small{display:block;font-weight:500;font-size:11px;color:var(--tx3)}
-.sp-sess-head .nm{font-weight:640;font-size:13.5px}
-.sp-sess-head .nm em{font-style:normal;font-weight:500;color:var(--tx2)}
-.sp-sess-head .ct{font-size:12px;color:var(--tx2);white-space:nowrap}
-.sp-sess-body{padding:4px 14px 14px;border-top:1px solid var(--ln)}
-@media(max-width:700px){.sp-sess-head{grid-template-columns:56px 1fr;grid-auto-rows:auto}.sp-sess-head .ct,.sp-sess-head .d2-tag{grid-column:2}}
