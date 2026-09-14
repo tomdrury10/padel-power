@@ -54,6 +54,8 @@ async function internalCaller(req: Request): Promise<boolean> {
   }
 }
 
+// an admin from the Studio Manager. A plain member session is refused:
+// members cancel through cancel-booking, which enforces the 24h cutoff.
 async function staffCaller(req: Request): Promise<boolean> {
   const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
   if (!token) return false;
@@ -61,7 +63,9 @@ async function staffCaller(req: Request): Promise<boolean> {
     headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${token}` },
   });
   const user = who.ok ? await who.json() : null;
-  return !!user?.id;
+  if (!user?.id) return false;
+  const rows = await db(`staff_roles?user_id=eq.${user.id}&select=role`).catch(() => []);
+  return rows[0]?.role === "admin";
 }
 
 Deno.serve(async (req) => {
