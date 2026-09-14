@@ -969,6 +969,7 @@ function renderSettings() {
   f.rMax.value = RULES.maxRiders;
   f.rMin.value = RULES.minRiders;
   f.rCutoff.value = RULES.cutoffHours;
+  f.rJoin.value = RULES.joinCutoffHours;
   f.rWindow.value = RULES.windowDays;
   f.rPackCredits.value = RULES.packCredits;
   f.rPackPrice.value = RULES.packPrice / 100;
@@ -1072,7 +1073,7 @@ $('rulesForm').addEventListener('submit', async e => {
     const packPrice = Math.round(parseFloat(f.rPackPrice.value) * 100);
     if (!isFinite(packPrice) || packPrice < 100 || packPrice > 100000) { alert('Enter a pack price between £1 and £1000.'); return; }
     await Settings.saveRules({
-      maxRiders: max, minRiders: min, cutoffHours: +f.rCutoff.value, windowDays: +f.rWindow.value,
+      maxRiders: max, minRiders: min, cutoffHours: +f.rCutoff.value, joinCutoffHours: +f.rJoin.value, windowDays: +f.rWindow.value,
       packCredits: +f.rPackCredits.value, packPrice, packMonths: +f.rPackMonths.value,
       requirePhone: f.rRequirePhone.checked, codeMinutes: +f.rCodeMinutes.value,
     });
@@ -1098,7 +1099,9 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawers
 
 /* --- new booking drawer --- */
 function bookableUpcoming() {
-  return upcoming(45).filter(c => !c.cancelled && !withinCutoff(c.id) && c.count < RULES.maxRiders).slice(0, 60);
+  // the desk can add someone right up to the start; the database exempts staff from the cutoffs
+  const now = new Date();
+  return upcoming(45).filter(c => !c.cancelled && classStart(c.id) > now && c.count < RULES.maxRiders).slice(0, 60);
 }
 function openBooking(classId) {
   const picker = $('bkPick');

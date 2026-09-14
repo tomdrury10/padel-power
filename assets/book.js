@@ -32,7 +32,7 @@
   const id = `${date}_${time}`;
   const booked = Store.count(id);
   const spots = RULES.maxRiders - booked;
-  const closed = withinCutoff(id);
+  const closed = bookingClosed(id);
   const price = t.price;   // pence, or null while classes are free to reserve
   const session = q.get('session');   // set when returning from Stripe Checkout
 
@@ -82,7 +82,9 @@
     lockCard('This class is full. Pick another session on the timetable.');
   } else if (closed) {
     spotsEl.textContent = 'Booking closed';
-    lockCard('Bookings close 24 hours before class so instructors know who’s coming. Pick a later session.');
+    lockCard(withinJoinCutoff(id)
+      ? `Bookings close ${RULES.joinCutoffHours === 1 ? 'an hour' : RULES.joinCutoffHours + ' hours'} before class. Pick a later session.`
+      : `This class did not reach ${RULES.minRiders} bookings ${RULES.cutoffHours} hours ahead, so it is not going ahead. Pick a later session.`);
   } else {
     spotsEl.textContent = spotsLabel();
     if (spots <= 2) spotsEl.classList.add('low');

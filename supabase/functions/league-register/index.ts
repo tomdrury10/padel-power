@@ -73,6 +73,65 @@ async function isAdmin(userId: string) {
   return rows[0]?.role === "admin";
 }
 
+// ---------------- Playtomic ----------------
+// The venue's players carry "benefits"; the club's memberships live there.
+// league_member_benefits says which of them count for league pricing.
+const PT_BASE = "https://thirdparty.playtomic.io";
+const PT_VENUE = "95214d52-1a73-44be-b5f8-7aafee310010";
+const PT_ID = Deno.env.get("PLAYTOMIC_CLIENT_ID") ?? "";
+const PT_SECRET = Deno.env.get("PLAYTOMIC_SECRET") ?? "";
+let ptToken: { value: string; until: number } | null = null;
+
+async function playtomicToken(): Promise<string | null> {
+  if (!PT_ID || !PT_SECRET) return null;
+  if (ptToken && ptToken.until > Date.now()) return ptToken.value;
+  const r = await fetch(`${PT_BASE}/api/v1/oauth/token`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ client_id: PT_ID, secret: PT_SECRET }),
+  });
+  if (!r.ok) return null;
+  const d = await r.json().catch(() => ({}));
+  const t = d.access_token || d.token || null;
+  if (t) ptToken = { value: t, until: Date.now() + 50 * 60 * 1000 };
+  return t;
+}
+
+type Benefit = { benefit_id: string; name: string; expires_at?: string | null };
+// found=false means Playtomic has no such player at this venue; null means
+// we could not ask (no credentials, no id, or their API was down)
+async function playtomicPlayer(playerId: string | null): Promise<{ found: boolean | null; benefits: Benefit[] }> {
+  if (!playerId) return { found: null, benefits: [] };
+  const t = await playtomicToken();
+  if (!t) return { found: null, benefits: [] };
+  const r = await fetch(`${PT_BASE}/api/v1/venues/${PT_VENUE}/players/${encodeURIComponent(playerId)}?include=benefits`, {
+    headers: { Authorization: `Bearer ${t}` },
+  });
+  if (r.status === 404) return { found: false, benefits: [] };
+  if (!r.ok) return { found: null, benefits: [] };
+  const d = await r.json().catch(() => ({}));
+  const benefits = (Array.isArray(d.benefits) ? d.benefits : []).map((b: Record<string, unknown>) => ({
+    benefit_id: String(b.benefit_id ?? ""), name: String(b.name ?? ""), expires_at: (b.expires_at as string) ?? null,
+  })).filter((b: Benefit) => b.benefit_id);
+  return { found: true, benefits };
+}
+
+// member list first (a staff override), then Playtomic benefits that count,
+// then non-member; "review" when the profile link points at nobody we know
+async function resolveMembership(email: string, phone: string, playerId: string | null) {
+  const listHit = await rpc("league_membership_check", { p_email: email, p_phone: phone });
+  const pt = await playtomicPlayer(playerId);
+  if (pt.benefits.length) await rpc("league_note_benefits", { p_benefits: pt.benefits }).catch(() => {});
+  if (listHit === "member") return { status: "member", source: "list", ...pt };
+  if (pt.found && pt.benefits.length) {
+    const counting = await db("league_member_benefits?counts=eq.true&select=benefit_id");
+    const ids = new Set(counting.map((c: { benefit_id: string }) => c.benefit_id));
+    const live = pt.benefits.filter((b) => ids.has(b.benefit_id) && (!b.expires_at || Date.parse(b.expires_at) > Date.now()));
+    if (live.length) return { status: "member", source: "playtomic", ...pt };
+  }
+  if (pt.found === false) return { status: "review", source: "none", ...pt };
+  return { status: "non_member", source: "none", ...pt };
+}
+
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 function schedule(league: Record<string, unknown>) {
   const start = new Date(`${league.season_start}T12:00:00Z`);
@@ -131,16 +190,18 @@ Deno.serve(async (req) => {
       if (!profile?.phone) return json({ error: "profile_incomplete" }, 409);
       if (settings?.require_phone_verification && !profile.phone_verified_at) return json({ error: "phone_unverified" }, 409);
 
-      const membership = await rpc("league_membership_check", { p_email: user.email, p_phone: profile.phone });
+      const playtomic = String(body.playtomic_url || "").trim();
+      if (!PLAYTOMIC.test(playtomic)) return json({ error: "bad_playtomic_url" }, 400);
+      const playerId = playerIdFrom(playtomic);
+      const m = await resolveMembership(user.email, profile.phone, playerId);
+      const membership = m.status;
       const price = membership === "member" ? league.member_price_pence : league.nonmember_price_pence;
       const sched = schedule(league);
 
       if (action === "quote") {
-        return json({ league: { id: league.id, name: league.name, kind: league.kind }, membership_status: membership, weekly_price_pence: price, ...sched });
+        return json({ league: { id: league.id, name: league.name, kind: league.kind }, membership_status: membership,
+          membership_source: m.source, playtomic_found: m.found, weekly_price_pence: price, ...sched });
       }
-
-      const playtomic = String(body.playtomic_url || "").trim();
-      if (!PLAYTOMIC.test(playtomic)) return json({ error: "bad_playtomic_url" }, 400);
 
       // one live registration per league; a half-finished one is picked up again
       let [reg] = await db(`league_registrations?league_id=eq.${league.id}&user_id=eq.${user.id}&cancelled_at=is.null&select=*`);
@@ -148,7 +209,8 @@ Deno.serve(async (req) => {
       const name = profile.full_name || user.email.split("@")[0];
       if (reg) {
         [reg] = await patch("league_registrations", reg.id, {
-          playtomic_url: playtomic, playtomic_player_id: playerIdFrom(playtomic), membership_status: membership, membership_checked_at: new Date().toISOString(),
+          playtomic_url: playtomic, playtomic_player_id: playerId, playtomic_found: m.found, playtomic_benefits: m.benefits,
+          membership_status: membership, membership_source: m.source, membership_checked_at: new Date().toISOString(),
           weekly_price_pence: price, terms_accepted_at: new Date().toISOString(), name, email: user.email, phone: profile.phone,
         });
       } else {
@@ -156,11 +218,12 @@ Deno.serve(async (req) => {
           method: "POST", headers: { Prefer: "return=representation" },
           body: JSON.stringify({
             league_id: league.id, user_id: user.id, name, email: user.email, phone: profile.phone,
-            playtomic_url: playtomic, playtomic_player_id: playerIdFrom(playtomic), membership_status: membership, weekly_price_pence: price,
+            playtomic_url: playtomic, playtomic_player_id: playerId, playtomic_found: m.found, playtomic_benefits: m.benefits,
+            membership_status: membership, membership_source: m.source, weekly_price_pence: price,
             terms_accepted_at: new Date().toISOString(),
           }),
         });
-        await log(reg.id, "registration_started", { membership, weekly_price_pence: price }, user.id);
+        await log(reg.id, "registration_started", { membership, source: m.source, playtomic_found: m.found, weekly_price_pence: price }, user.id);
       }
 
       if (league.kind === "doubles" && body.partner_code && !reg.pair_id) {
@@ -217,7 +280,7 @@ Deno.serve(async (req) => {
             });
           }
         }
-        await patch("league_registrations", reg.id, { membership_status: status, weekly_price_pence: pence, membership_checked_at: new Date().toISOString() });
+        await patch("league_registrations", reg.id, { membership_status: status, weekly_price_pence: pence, membership_checked_at: new Date().toISOString(), membership_source: "admin" });
         await log(reg.id, action === "set_membership" ? "membership_overridden" : "price_overridden",
           { from_status: reg.membership_status, to_status: status, from_pence: reg.weekly_price_pence, to_pence: pence }, user.id);
         return json({ ok: true, weekly_price_pence: pence, membership_status: status });

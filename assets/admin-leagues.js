@@ -3,17 +3,18 @@
    League setup, club member list, registrations with actions.
    Loaded after admin.js; renderLeagues() is called by its router.
    ============================================================ */
-const LG = { leagues: [], regs: [], members: [], audit: [], league: '', status: '', search: '' };
+const LG = { leagues: [], regs: [], members: [], benefits: [], audit: [], league: '', status: '', search: '' };
 const lgGbp = p => '£' + (p % 100 === 0 ? p / 100 : (p / 100).toFixed(2));
 const lgDate = iso => iso ? new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(iso + 'T12:00:00')) : '';
 
 async function renderLeagues() {
-  [LG.leagues, LG.regs, LG.members] = await Promise.all([
+  [LG.leagues, LG.regs, LG.members, LG.benefits] = await Promise.all([
     ppApi('leagues?select=*&order=sort'),
     ppApi('league_registrations?select=*&order=created_at.desc'),
     ppApi('league_members?select=*&order=created_at.desc'),
+    ppApi('league_member_benefits?select=*&order=name'),
   ]);
-  drawLeagueSetup(); drawMembers(); drawRegs();
+  drawLeagueSetup(); drawMembers(); drawBenefits(); drawRegs();
 }
 
 /* ---- setup ---- */
@@ -73,6 +74,18 @@ $('lgMemberAdd').addEventListener('submit', async e => {
   } catch (err) { alert('Could not add: ' + err.message); }
 });
 
+/* ---- which Playtomic benefits make someone a member ---- */
+function drawBenefits() {
+  $('lgBenefitList').innerHTML = LG.benefits.map(b => `
+    <label class="d2-check d2-type"><input type="checkbox" data-benefit="${b.benefit_id}"${b.counts ? ' checked' : ''}${isAdmin() ? '' : ' disabled'}>
+      <span>${esc(b.name)}</span></label>`).join('') || '<p class="d2-empty">No Playtomic benefits seen yet.</p>';
+  $('lgBenefitList').querySelectorAll('input[data-benefit]').forEach(i => i.addEventListener('change', async () => {
+    try {
+      await ppApi(`league_member_benefits?benefit_id=eq.${i.dataset.benefit}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ counts: i.checked }) });
+    } catch (err) { alert('Could not save: ' + err.message); i.checked = !i.checked; }
+  }));
+}
+
 /* ---- registrations ---- */
 function lgStatus(r) {
   const l = LG.leagues.find(x => x.id === r.league_id) || {};
@@ -106,7 +119,7 @@ function drawRegs() {
     return `<tr>
       <td><b>${esc(r.name)}</b><br><small>${esc(r.email)} · ${esc(r.phone)}</small><br><a class="d2-link" href="${esc(r.playtomic_url)}" target="_blank" rel="noopener">Playtomic profile ↗</a>${r.playtomic_player_id ? `<br><small>id ${esc(r.playtomic_player_id)}</small>` : ''}</td>
       <td>${esc(l.name || '')}</td>
-      <td>${r.membership_status === 'member' ? 'Member' : r.membership_status === 'review' ? 'Review' : 'Non-member'}</td>
+      <td>${r.membership_status === 'member' ? 'Member' : r.membership_status === 'review' ? 'Review' : 'Non-member'}<br><small>${r.membership_source === 'playtomic' ? 'Playtomic' : r.membership_source === 'list' ? 'member list' : r.membership_source === 'admin' ? 'set by admin' : r.playtomic_found === false ? 'not found on Playtomic' : 'no match'}${(r.playtomic_benefits || []).length ? ': ' + esc(r.playtomic_benefits.map(b => b.name).join(', ')) : ''}</small></td>
       <td>${lgGbp(r.weekly_price_pence)}${r.payments_taken ? `<br><small>${r.payments_taken} taken</small>` : ''}</td>
       <td>${l.kind === 'singles' ? '<small>n/a</small>' : p ? esc(p.name) : `<small>code ${r.partner_code}</small>`}</td>
       <td class="lg-status"><span class="lg-pill ${tone(st)}">${st}</span></td>

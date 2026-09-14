@@ -241,6 +241,9 @@
             </div>
           </form>
           <div id="lgMemberList" class="d2-types"></div>
+          <div class="d2-card-head" style="margin-top:22px"><h2>Playtomic memberships</h2></div>
+          <p class="d2-sub">Registration looks the player up on Playtomic from their profile link. Tick the benefits that count as a club member for league pricing. New benefit types appear here as players with them register.</p>
+          <div id="lgBenefitList" class="d2-types"></div>
         </div>
       </div>
       <div class="d2-toolbar">
@@ -308,7 +311,8 @@
           <form class="d2-rules" id="rulesForm">
             <label>Beds per class<input name="rMax" type="number" min="1" max="20" required></label>
             <label>Minimum to run<input name="rMin" type="number" min="1" max="10" required></label>
-            <label>Booking cutoff (hours)<input name="rCutoff" type="number" min="0" max="72" required></label>
+            <label>Confirm or cancel at (hours before)<input name="rCutoff" type="number" min="1" max="72" required></label>
+            <label>Late joins close (hours before)<input name="rJoin" type="number" min="0" max="24" required></label>
             <label>Booking window (days)<input name="rWindow" type="number" min="7" max="60" required></label>
             <label>Classes per pack<input name="rPackCredits" type="number" min="1" max="50" required></label>
             <label>Pack price (£)<input name="rPackPrice" type="number" min="1" max="1000" step="0.01" required></label>
@@ -514,6 +518,6 @@
 <script src="../assets/pilates-core.js?v=25"></script>
 <script src="../assets/admin.js?v=37"></script>
 <script src="../assets/admin-guides.js?v=2"></script>
-<script src="../assets/admin-leagues.js?v=3"></script>
+<script src="../assets/admin-leagues.js?v=4"></script>
 </body>
 </html>

@@ -69,7 +69,7 @@
       const btn = e.target.querySelector('button[type=submit]');
       btn.disabled = true;
       try {
-        quote = await ppFn('league-register', { method: 'POST', body: JSON.stringify({ action: 'quote', league_id: l.id }) });
+        quote = await ppFn('league-register', { method: 'POST', body: JSON.stringify({ action: 'quote', league_id: l.id, playtomic_url: $('lgPlaytomic').value.trim() }) });
         showQuote(l, quote);
       } catch (ex) {
         err.textContent = friendly(ex.message); err.hidden = false;
@@ -83,7 +83,7 @@
       const first = qt.first_payment_date ? fmtLong(qt.first_payment_date) : 'today';
       $('lgQuoteList').innerHTML = `
         <dt>League</dt><dd>${esc(l.name)}</dd>
-        <dt>Membership</dt><dd>${qt.membership_status === 'member' ? 'Club member' : 'Non-member'}</dd>
+        <dt>Membership</dt><dd>${qt.membership_status === 'member' ? 'Club member' : qt.membership_status === 'review' ? 'Not found on Playtomic, non-member price for now' : 'Non-member'}${qt.playtomic_found === false ? '<br><small>We could not find that Playtomic profile at Padel Power. Check the link, or carry on and the studio will review it.</small>' : ''}</dd>
         <dt>Weekly fee</dt><dd class="big">${gbp(qt.weekly_price_pence)}</dd>
         <dt>First payment</dt><dd>${first}</dd>
         <dt>Then</dt><dd>every week for ${qt.weeks} weeks, ${qt.payments_total} payments in total</dd>

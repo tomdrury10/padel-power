@@ -30,12 +30,12 @@ function renderClasses() {
     const t = CLASS_TYPES[typeKey];
     const id = `${iso(activeDate)}_${time}`;
     const spots = RULES.maxRiders - Store.count(id);
-    const closed = withinCutoff(id);
+    const closed = bookingClosed(id);
     const mine = Store.mine(id);
     let action;
     if (mine)            action = '<span class="pbooked">Booked ✓</span>';
     else if (spots <= 0) action = '<span class="pfull">Class full</span>';
-    else if (closed)     action = '<span class="pfull">Closed · book 24h ahead</span>';
+    else if (closed)     action = `<span class="pfull">${withinJoinCutoff(id) ? 'Bookings closed' : 'Closed · not enough booked'}</span>`;
     else                 action = `<a class="btn btn-blue pbook" href="../book/?date=${iso(activeDate)}&time=${time}&type=${typeKey}">Book <span class="arr">→</span></a>`;
     return `
     <div class="pclass ${spots <= 0 || closed ? 'off' : ''}">

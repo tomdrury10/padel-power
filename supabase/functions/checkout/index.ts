@@ -208,7 +208,7 @@ Deno.serve(async (req) => {
     const [cancelled, custom, settings] = await Promise.all([
       db(`cancelled_classes?class_date=eq.${dateIso}&start_time=eq.${encodeURIComponent(time)}&select=id`),
       db(`custom_classes?class_date=eq.${dateIso}&start_time=eq.${encodeURIComponent(time)}&select=type_key`),
-      db(`settings?id=eq.1&select=max_riders,cutoff_hours`),
+      db(`settings?id=eq.1&select=max_riders,min_riders,cutoff_hours,join_cutoff_hours`),
     ]);
     if (cancelled.length) return json({ error: "class_cancelled" }, 409);
 
@@ -222,14 +222,10 @@ Deno.serve(async (req) => {
     }
     if (!typeKey) return json({ error: "no_such_class" }, 404);
 
-    const { max_riders, cutoff_hours } = settings[0];
+    const { max_riders, min_riders, cutoff_hours } = settings[0];
+    const join_cutoff_hours = settings[0].join_cutoff_hours ?? 1;
     const left = hoursUntil(dateIso, time);
     if (left <= 0) return json({ error: "class_in_past" }, 409);
-    if (left < cutoff_hours) return json({ error: "cutoff" }, 409);
-
-    // health waiver: required once per email before any paid booking
-    const waiver = await db(`waivers?email=eq.${encodeURIComponent(email)}&select=id`);
-    if (!waiver.length) return json({ error: "waiver_required" }, 409);
 
     const [booked, mine] = await Promise.all([
       db(`bookings?class_id=eq.${encodeURIComponent(classId)}&cancelled_at=is.null&select=id`),
@@ -237,6 +233,17 @@ Deno.serve(async (req) => {
         ? db(`bookings?class_id=eq.${encodeURIComponent(classId)}&user_id=eq.${userId}&cancelled_at=is.null&select=id`)
         : Promise.resolve([]),
     ]);
+
+    // Same rule as enforce_booking_rules: the normal window closes at
+    // cutoff_hours, but a class that has reached its minimum by then is
+    // going ahead and stays open to late joiners until join_cutoff_hours.
+    if (left < join_cutoff_hours) return json({ error: "cutoff" }, 409);
+    if (left < cutoff_hours && booked.length < min_riders) return json({ error: "cutoff" }, 409);
+
+    // health waiver: required once per email before any paid booking
+    const waiver = await db(`waivers?email=eq.${encodeURIComponent(email)}&select=id`);
+    if (!waiver.length) return json({ error: "waiver_required" }, 409);
+
     if (mine.length) return json({ error: "already_booked" }, 409);
     if (booked.length >= max_riders) return json({ error: "class_full" }, 409);
 

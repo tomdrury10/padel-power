@@ -220,7 +220,7 @@ const GUIDES = [
     notes: [
       'If that email has never signed a health waiver, the waiver form opens first. Hand the device to the member to fill in and sign before the booking is taken.',
       'Front desk and phone bookings are never charged online. Take the payment however you normally would.',
-      'A class that is full, or already inside the booking cutoff, will not appear in the list.',
+      'A class that is full or has already started will not appear in the list. Unlike online booking, the desk can add someone right up to the start.',
     ],
   },
   {
@@ -369,8 +369,9 @@ const GUIDES = [
     steps: [
       'Open Settings and find the Studio rules card.',
       'Beds per class is the capacity of the studio.',
-      'Minimum to run is how many bookings a class needs. Below that, it is cancelled automatically 24 hours before, and everyone is told and refunded.',
-      'Booking cutoff is how many hours before a class the doors close on new bookings.',
+      'Minimum to run is how many bookings a class needs. Below that, it is cancelled automatically at the confirm or cancel point, and everyone is told and refunded.',
+      'Confirm or cancel at is how many hours before a class the decision is made, normally 24. A class with enough bookings at that point is going ahead; one without is cancelled. It is also the point where members can no longer cancel online.',
+      'Late joins close is when online booking finally shuts on a class that is going ahead, normally 1 hour before. Between the two points anyone can still book onto a confirmed class.',
       'Booking window is how far ahead members can book.',
       'Classes per pack, pack price and pack valid for set up the block of classes members buy from their account.',
       'Press Save rules.',

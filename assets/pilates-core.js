@@ -215,7 +215,8 @@ async function ppFn(path, opts = {}) {
 /* ---------- live config (filled from the database) ---------- */
 const RULES = {
   openingDate: '2026-09-01',
-  cutoffHours: 24,
+  cutoffHours: 24,      // auto-cancel decision + online cancellation cutoff
+  joinCutoffHours: 1,   // a class that is going ahead stays open to join until here
   minRiders: 3,
   maxRiders: 8,
   windowDays: 14,
@@ -279,6 +280,12 @@ function classStart(classId) {
   return new Date(`${date}T${time}:00`);
 }
 const withinCutoff = classId => (classStart(classId) - new Date()) < RULES.cutoffHours * 3600 * 1000;
+const withinJoinCutoff = classId => (classStart(classId) - new Date()) < RULES.joinCutoffHours * 3600 * 1000;
+// online booking: the normal window closes at cutoffHours, but a class that
+// has reached its minimum by then is going ahead and stays open to late
+// joiners until joinCutoffHours. Mirrors enforce_booking_rules in the database.
+const bookingClosed = classId => withinJoinCutoff(classId)
+  || (withinCutoff(classId) && Store.count(classId) < RULES.minRiders);
 
 /* ---------- my bookings (this device, fallback for the Booked tick) ---------- */
 const My = {
@@ -602,7 +609,7 @@ const Settings = {
       method: 'PATCH',
       body: JSON.stringify({
         max_riders: rules.maxRiders, min_riders: rules.minRiders,
-        cutoff_hours: rules.cutoffHours, window_days: rules.windowDays,
+        cutoff_hours: rules.cutoffHours, join_cutoff_hours: rules.joinCutoffHours, window_days: rules.windowDays,
         pack_credits: rules.packCredits, pack_price_pence: rules.packPrice, pack_expiry_months: rules.packMonths,
         require_phone_verification: rules.requirePhone, verification_code_minutes: rules.codeMinutes,
       }),
@@ -764,7 +771,7 @@ async function ppInit() {
     const s = settings[0];
     Object.assign(RULES, {
       maxRiders: s.max_riders, minRiders: s.min_riders,
-      cutoffHours: s.cutoff_hours, windowDays: s.window_days,
+      cutoffHours: s.cutoff_hours, joinCutoffHours: s.join_cutoff_hours ?? RULES.joinCutoffHours, windowDays: s.window_days,
       openingDate: s.opening_date,
       packCredits: s.pack_credits ?? RULES.packCredits,
       packPrice: s.pack_price_pence ?? RULES.packPrice,
