@@ -40,7 +40,8 @@ function dayClasses(d) { return classesFor(d, true).map(c => classInfo(d, c)); }
 function statusOf(c) {
   if (c.cancelled)                return { key: 'off',   label: 'Cancelled' };
   if (c.count >= RULES.maxRiders) return { key: 'full',  label: 'Full' };
-  if (withinCutoff(c.id))         return c.count >= RULES.minRiders ? { key: 'on', label: 'Confirmed' } : { key: 'risk', label: 'Below minimum' };
+  if (withinMinCutoff(c.id))      return c.count >= RULES.minRiders ? { key: 'on', label: 'Confirmed' } : { key: 'risk', label: 'Below minimum' };
+  if (withinCutoff(c.id) && c.count >= RULES.minRiders) return { key: 'on', label: 'Confirmed' };
   if (c.count < RULES.minRiders)  return { key: 'needs', label: `Needs ${RULES.minRiders - c.count} more` };
   return { key: 'on', label: 'Confirmed' };
 }
@@ -974,6 +975,7 @@ function renderSettings() {
   f.rMax.value = RULES.maxRiders;
   f.rMin.value = RULES.minRiders;
   f.rCutoff.value = RULES.cutoffHours;
+  f.rMinCutoff.value = RULES.minCutoffHours;
   f.rJoin.value = RULES.joinCutoffHours;
   f.rWindow.value = RULES.windowDays;
   f.rPackCredits.value = RULES.packCredits;
@@ -1078,7 +1080,7 @@ $('rulesForm').addEventListener('submit', async e => {
     const packPrice = Math.round(parseFloat(f.rPackPrice.value) * 100);
     if (!isFinite(packPrice) || packPrice < 100 || packPrice > 100000) { alert('Enter a pack price between £1 and £1000.'); return; }
     await Settings.saveRules({
-      maxRiders: max, minRiders: min, cutoffHours: +f.rCutoff.value, joinCutoffHours: +f.rJoin.value, windowDays: +f.rWindow.value,
+      maxRiders: max, minRiders: min, cutoffHours: +f.rCutoff.value, minCutoffHours: +f.rMinCutoff.value, joinCutoffHours: +f.rJoin.value, windowDays: +f.rWindow.value,
       packCredits: +f.rPackCredits.value, packPrice, packMonths: +f.rPackMonths.value,
       requirePhone: f.rRequirePhone.checked, codeMinutes: +f.rCodeMinutes.value,
     });

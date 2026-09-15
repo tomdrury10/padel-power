@@ -291,7 +291,7 @@ Deno.serve(async (req) => {
     const [cancelled, custom, settings] = await Promise.all([
       db(`cancelled_classes?class_date=eq.${dateIso}&start_time=eq.${encodeURIComponent(time)}&select=id`),
       db(`custom_classes?class_date=eq.${dateIso}&start_time=eq.${encodeURIComponent(time)}&select=type_key`),
-      db(`settings?id=eq.1&select=max_riders,min_riders,cutoff_hours,join_cutoff_hours`),
+      db(`settings?id=eq.1&select=max_riders,min_riders,cutoff_hours,min_cutoff_hours,join_cutoff_hours`),
     ]);
     if (cancelled.length) return json({ error: "class_cancelled" }, 409);
 
@@ -307,6 +307,7 @@ Deno.serve(async (req) => {
 
     const { max_riders, min_riders, cutoff_hours } = settings[0];
     const join_cutoff_hours = settings[0].join_cutoff_hours ?? 1;
+    const min_cutoff_hours = settings[0].min_cutoff_hours ?? cutoff_hours;
     const left = hoursUntil(dateIso, time);
     if (left <= 0) return json({ error: "class_in_past" }, 409);
 
@@ -317,11 +318,12 @@ Deno.serve(async (req) => {
         : Promise.resolve([]),
     ]);
 
-    // Same rule as enforce_booking_rules: the normal window closes at
-    // cutoff_hours, but a class that has reached its minimum by then is
-    // going ahead and stays open to late joiners until join_cutoff_hours.
+    // Same rule as enforce_booking_rules: a class under its minimum stays
+    // open until min_cutoff_hours (where it is cancelled if still short); a
+    // class that has reached its minimum stays open to late joiners until
+    // join_cutoff_hours.
     if (left < join_cutoff_hours) return json({ error: "cutoff" }, 409);
-    if (left < cutoff_hours && booked.length < min_riders) return json({ error: "cutoff" }, 409);
+    if (left < min_cutoff_hours && booked.length < min_riders) return json({ error: "cutoff" }, 409);
 
     // health waiver: required once per email before any paid booking
     const waiver = await db(`waivers?email=eq.${encodeURIComponent(email)}&select=id`);
