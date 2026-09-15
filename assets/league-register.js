@@ -114,7 +114,7 @@
 
   /* ================= my registrations ================= */
   async function loadMine() {
-    const rows = await ppApi('league_registrations?select=id,league_id,user_id,name,membership_status,weekly_price_pence,card_status,card_label,pair_id,partner_code,playtomic_added_at,last_payment_status,payments_taken,billing_ended_at,cancelled_at&cancelled_at=is.null&order=created_at.desc');
+    const rows = await ppApi('league_registrations?select=id,league_id,user_id,name,membership_status,weekly_price_pence,card_status,card_label,pair_id,partner_code,playtomic_added_at,playtomic_error,last_payment_status,payments_taken,billing_ended_at,cancelled_at&cancelled_at=is.null&order=created_at.desc');
     return rows;
   }
   async function renderMine() {
@@ -125,6 +125,14 @@
         if (mine.some(r => r.user_id === Auth.userId() && r.card_status === 'authorised')) break;
         await new Promise(r => setTimeout(r, 1500));
       }
+      // a singles player is added to Playtomic within seconds of the card saving
+      for (let i = 0; i < 4; i++) {
+        const waiting = mine.some(r => r.user_id === Auth.userId() && r.card_status === 'authorised' && !r.playtomic_added_at && !r.playtomic_error
+          && (leagues.find(x => x.id === r.league_id) || {}).kind === 'singles');
+        if (!waiting) break;
+        await new Promise(r => setTimeout(r, 1500));
+        mine = await loadMine();
+      }
     }
     show('lgMine');
     const own = mine.filter(r => r.user_id === Auth.userId());
@@ -133,22 +141,50 @@
       ? 'Your card is saved. Nothing has been charged. Your weekly fee starts when the season does.'
       : 'Here is where you stand. Doubles players: send your partner code on if they have not registered yet.';
     if (q.get('cancelled')) $('lgMineLede').textContent = 'You left Stripe without saving a card, so your registration is not complete yet. Use the button below to finish it.';
+    const fmtDay = d => new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }).format(d);
+    const lastPayment = l => {
+      if (!l.season_start || !l.weeks) return null;
+      const d = new Date(l.season_start + 'T12:00:00'); d.setDate(d.getDate() + 7 * (l.weeks - 1)); return d;
+    };
+    const cardName = c => String(c || 'Saved').replace(/^\w/, ch => ch.toUpperCase());
     $('lgMineList').innerHTML = own.map(r => {
       const l = leagues.find(x => x.id === r.league_id) || {};
       const p = partnerOf(r);
       const link = `${PP_SITE}/northampton-padel-league/register/?partner=${r.partner_code}`;
       const st = status(r, l, p);
-      return `<div class="lg-reg">
-        <h4>${esc(l.name || 'League')} <span class="lg-pill ${st.tone}">${st.label}</span></h4>
-        <p>${r.membership_status === 'member' ? 'Club member' : 'Non-member'} · ${gbp(r.weekly_price_pence)} a week for ${l.weeks || '?'} weeks from ${l.season_start ? fmtLong(l.season_start) : 'the season start'}.</p>
-        ${r.card_status !== 'authorised' ? `<p><button class="btn btn-blue" data-finish="${r.id}">Save your card to finish <span class="arr">→</span></button></p>` : `<p>Card: ${esc(r.card_label || 'saved')}. <button class="ev-forgot" data-card="${r.id}">Update card</button></p>`}
-        ${l.kind === 'doubles' ? (p
-          ? `<p>Partner: <b>${esc(p.name)}</b>${p.card_status === 'authorised' ? '' : ' (still to save their card)'}.</p>`
-          : `<p>Send this link to your partner so they can register and pair with you:</p>
-             <div class="lg-share"><input readonly value="${link}" id="share-${r.id}"><button class="btn" data-copy="share-${r.id}">Copy</button></div>
-             <p class="ac-fine">Or give them the code <b>${r.partner_code}</b>.</p>`) : ''}
-      </div>`;
-    }).join('') || '<p>You have no league registrations yet.</p>';
+      const saved = r.card_status === 'authorised';
+      const doubles = l.kind === 'doubles';
+      const last = lastPayment(l);
+      const pt = r.playtomic_added_at ? { tone: 'good', label: 'You are in the league' }
+        : r.playtomic_error ? { tone: 'warn', label: 'The club is adding you' }
+        : !saved ? { tone: '', label: 'Added once your card is saved' }
+        : doubles && !(p && p.card_status === 'authorised') ? { tone: '', label: 'Added once your partner registers' }
+        : { tone: '', label: 'Adding you now' };
+      const member = r.membership_status === 'member' ? 'Club member'
+        : r.membership_status === 'review' ? 'Non-member price, being checked' : 'Non-member';
+      return `<article class="lgr">
+        <header class="lgr-head">
+          <span class="lgr-kind">${doubles ? 'Doubles league' : 'Singles league'}</span>
+          <span class="lgr-pill ${st.tone}">${st.label}</span>
+        </header>
+        <h3 class="lgr-name">${esc(l.name || 'League')}</h3>
+        <div class="lgr-fee"><b>${gbp(r.weekly_price_pence)}</b><span>a week${l.weeks ? ` for ${l.weeks} weeks` : ''}</span></div>
+        <dl class="lgr-rows">
+          <div><dt>Membership</dt><dd>${member}</dd></div>
+          <div><dt>First payment</dt><dd>${l.season_start ? fmtDay(new Date(l.season_start + 'T12:00:00')) : 'When the season starts'}</dd></div>
+          ${last ? `<div><dt>Last payment</dt><dd>${fmtDay(last)}</dd></div>` : ''}
+          <div><dt>Card</dt><dd>${saved ? `${esc(cardName(r.card_label))}<button class="lgr-link" data-card="${r.id}">Update</button>` : 'Not saved yet'}</dd></div>
+          ${doubles && p ? `<div><dt>Partner</dt><dd>${esc(p.name)}${p.card_status === 'authorised' ? '' : '<span class="lgr-note">still to save their card</span>'}</dd></div>` : ''}
+          <div><dt>Playtomic</dt><dd><i class="lgr-dot ${pt.tone}" aria-hidden="true"></i>${pt.label}</dd></div>
+        </dl>
+        ${saved ? '' : `<button class="btn btn-blue lgr-cta" data-finish="${r.id}">Save your card to finish <span class="arr">→</span></button>`}
+        ${doubles && !p ? `<div class="lgr-share">
+            <p>Send this link to your partner. When they register with it you are paired.</p>
+            <div class="lgr-share-row"><input readonly value="${link}" id="share-${r.id}" aria-label="Partner link"><button class="btn btn-ghost" data-copy="share-${r.id}">Copy</button></div>
+            <p class="lgr-code">Or give them the code <b>${r.partner_code}</b></p>
+          </div>` : ''}
+      </article>`;
+    }).join('') || '<p class="lgr-empty">You have no league registrations yet.</p>';
 
     $('lgMineList').querySelectorAll('[data-copy]').forEach(b => b.addEventListener('click', () => {
       const inp = $(b.dataset.copy); inp.select();

@@ -1848,8 +1848,8 @@ nav.links a{white-space:nowrap}
 .lg-btns{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px}
 .lg-btns .btn{flex:1 1 auto;justify-content:center}
 .lg-summary{display:grid;grid-template-columns:auto 1fr;gap:8px 18px;margin:14px 0 18px;font-size:15px}
-.lg-summary dt{color:var(--muted,#6b6f76);font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.06em;text-transform:uppercase;align-self:center}
-.lg-summary dd{margin:0;font-weight:600}
+.lg-summary dt{color:var(--paper-faint);font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;align-self:center}
+.lg-summary dd{margin:0;font-weight:600;color:var(--paper)}
 .lg-summary dd.big{font-size:30px;font-weight:800;letter-spacing:-.02em}
 .lg-consent{align-items:flex-start;margin:6px 0 14px;font-size:14px;line-height:1.5}
 .lg-consent input{margin-top:4px}
@@ -1972,4 +1972,41 @@ nav.links a{white-space:nowrap}
   .rev-track,.logo-track{animation:none}
   .logo-marquee{white-space:normal}
   .logo-track{flex-wrap:wrap;justify-content:center}
+}
+
+/* ---------- league registration: confirmation card (dark site) ---------- */
+.lgr{display:flex;flex-direction:column;gap:18px}
+.lgr + .lgr{border-top:1px solid var(--line);padding-top:30px;margin-top:30px}
+.lgr-head{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.lgr-kind{font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--blue)}
+.lgr-pill{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;padding:5px 11px;border-radius:999px;border:1px solid var(--line);color:var(--paper-dim);white-space:nowrap}
+.lgr-pill.good{color:#86dcb2;border-color:rgba(76,195,138,.35);background:rgba(76,195,138,.1)}
+.lgr-pill.warn{color:var(--tan);border-color:rgba(201,144,92,.4);background:var(--tan-soft)}
+.lgr-pill.bad{color:#f19a8b;border-color:rgba(224,104,90,.4);background:rgba(224,104,90,.1)}
+.lgr-name{font-family:var(--display);font-variation-settings:'wdth' 112;font-style:italic;font-weight:830;text-transform:uppercase;font-size:clamp(22px,2.3vw,30px);line-height:1.04;color:var(--paper);margin:0;text-wrap:balance}
+.lgr-fee{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.lgr-fee b{font-family:var(--display);font-weight:860;font-size:46px;letter-spacing:-.02em;line-height:1;color:var(--paper);font-variant-numeric:tabular-nums}
+.lgr-fee span{color:var(--paper-dim);font-size:14.5px}
+.lgr-rows{margin:4px 0 0;border-top:1px solid var(--line)}
+.lgr-rows>div{display:grid;grid-template-columns:128px 1fr;gap:16px;align-items:baseline;padding:13px 0;border-bottom:1px solid var(--line-soft)}
+.lgr-rows dt{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--paper-faint)}
+.lgr-rows dd{margin:0;color:var(--paper);font-size:14.5px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.lgr-link{background:none;border:0;padding:0;margin-left:auto;font:inherit;font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--blue);cursor:pointer}
+.lgr-link:hover{color:#6cc6f5}
+.lgr-link:focus-visible,.lgr-share input:focus-visible{outline:2px solid var(--blue);outline-offset:3px;border-radius:4px}
+.lgr-note{color:var(--paper-faint);font-size:13px}
+.lgr-dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--paper-faint)}
+.lgr-dot.good{background:#4cc38a;box-shadow:0 0 0 4px rgba(76,195,138,.16)}
+.lgr-dot.warn{background:var(--tan);box-shadow:0 0 0 4px var(--tan-soft)}
+.lgr-cta{justify-content:center;width:100%}
+.lgr-share{display:flex;flex-direction:column;gap:10px;padding:16px;border:1px dashed var(--line);border-radius:14px}
+.lgr-share p{margin:0;color:var(--paper-dim);font-size:14px}
+.lgr-share-row{display:flex;gap:8px}
+.lgr-share-row input{flex:1;min-width:0;background:var(--ink);border:1px solid var(--line);border-radius:10px;padding:11px 12px;color:var(--paper);font-family:var(--mono);font-size:12px}
+.lgr-code b{color:var(--paper);font-family:var(--mono);letter-spacing:.08em}
+.lgr-empty{color:var(--paper-dim)}
+@media (max-width:520px){
+  .lgr-rows>div{grid-template-columns:1fr;gap:4px}
+  .lgr-link{margin-left:0}
+  .lgr-fee b{font-size:38px}
 }
