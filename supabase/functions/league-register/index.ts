@@ -296,6 +296,16 @@ Deno.serve(async (req) => {
         if (action === "cancel") upd.cancelled_at = new Date().toISOString();
         await patch("league_registrations", reg.id, upd);
         await log(reg.id, action === "cancel" ? "registration_cancelled" : "billing_stopped", {}, user.id);
+        if (action === "cancel" && reg.playtomic_team_id) {
+          // the team comes out of the Playtomic league too
+          const key = await rpc("pp_internal_key", {}).catch(() => null);
+          if (key) {
+            await fetch(`${SB_URL}/functions/v1/league-enrol`, {
+              method: "POST", headers: { "Content-Type": "application/json", "x-pp-key": String(key) },
+              body: JSON.stringify({ action: "remove", registration_id: reg.id }),
+            }).catch(() => {});
+          }
+        }
         if (action === "cancel" && reg.pair_id) {
           // the partner goes back to waiting, they are not cancelled
           await db(`league_registrations?pair_id=eq.${reg.pair_id}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ pair_id: null }) });

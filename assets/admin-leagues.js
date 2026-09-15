@@ -127,7 +127,7 @@ function drawRegs() {
       <td>${l.kind === 'singles' ? '<small>n/a</small>' : p ? esc(p.name) : `<small>code ${r.partner_code}</small>`}</td>
       <td class="lg-status"><span class="lg-pill ${tone(st)}">${st}</span></td>
       <td>${esc(r.card_label || (r.card_status === 'authorised' ? 'saved' : '—'))}${r.last_payment_status === 'failed' ? '<br><small>last payment failed</small>' : ''}</td>
-      <td>${r.playtomic_added_at ? 'Added' : '—'}</td>
+      <td>${r.playtomic_added_at ? (r.playtomic_team_id ? 'Added (auto)' : 'Added') : r.playtomic_error ? `<span class="lg-pill bad">Failed</span><br><small>${esc(r.playtomic_error)}</small>` : '—'}</td>
       <td>${isAdmin() ? `<select class="lg-act" data-id="${r.id}">
         <option value="">Action…</option>
         <option value="playtomic">${r.playtomic_added_at ? 'Unmark Playtomic' : 'Mark added to Playtomic'}</option>
