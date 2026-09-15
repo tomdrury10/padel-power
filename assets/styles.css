@@ -1845,6 +1845,7 @@ nav.links a{white-space:nowrap}
 
 /* ---------- league registration ---------- */
 .league-wrap .ac-authwrap{padding-top:40px}
+.league-wrap .ac-intro .lede + p{margin-top:26px}
 .lg-btns{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px}
 .lg-btns .btn{flex:1 1 auto;justify-content:center}
 .lg-summary{display:grid;grid-template-columns:auto 1fr;gap:8px 18px;margin:14px 0 18px;font-size:15px}
