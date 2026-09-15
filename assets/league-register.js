@@ -163,10 +163,10 @@
       const member = r.membership_status === 'member' ? 'Club member'
         : r.membership_status === 'review' ? 'Non-member price, being checked' : 'Non-member';
       return `<article class="lgr">
-        <header class="lgr-head">
+        <div class="lgr-head">
           <span class="lgr-kind">${doubles ? 'Doubles league' : 'Singles league'}</span>
           <span class="lgr-pill ${st.tone}">${st.label}</span>
-        </header>
+        </div>
         <h3 class="lgr-name">${esc(l.name || 'League')}</h3>
         <div class="lgr-fee"><b>${gbp(r.weekly_price_pence)}</b><span>a week${l.weeks ? ` for ${l.weeks} weeks` : ''}</span></div>
         <dl class="lgr-rows">
