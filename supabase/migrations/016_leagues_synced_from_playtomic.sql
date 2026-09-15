@@ -57,3 +57,33 @@ do $$ begin
     perform cron.schedule('playtomic-league-sync', '17 * * * *', 'select public.trigger_playtomic_sync()');
   end if;
 end $$;
+
+-- (applied as league_upsert_with_start_date) the Playtomic start date
+-- fills season_start when staff have not set one; kind follows
+-- registration_info.players_per_team. The five hand-seeded rows were
+-- deleted once real leagues had synced.
+drop function if exists public.league_upsert_from_playtomic(text, text, text, text, text);
+create or replace function public.league_upsert_from_playtomic(
+  p_playtomic_id text, p_name text, p_kind text, p_status text, p_url text, p_start date default null)
+returns uuid language plpgsql security definer set search_path = public as $$
+declare lid uuid;
+begin
+  select id into lid from leagues where playtomic_league_id = p_playtomic_id;
+  if lid is null then
+    select id into lid from leagues
+      where playtomic_league_id is null
+        and regexp_replace(lower(name), '[^a-z0-9]', '', 'g') = regexp_replace(lower(p_name), '[^a-z0-9]', '', 'g')
+      limit 1;
+  end if;
+  if lid is null then
+    insert into leagues (name, kind, playtomic_league_id, playtomic_status, playtomic_url, season_start, sort, synced_at)
+      values (p_name, p_kind, p_playtomic_id, p_status, p_url, p_start, (select coalesce(max(sort), 0) + 1 from leagues), now())
+      returning id into lid;
+  else
+    update leagues set name = p_name, kind = p_kind, playtomic_league_id = p_playtomic_id, playtomic_status = p_status,
+      playtomic_url = coalesce(playtomic_url, p_url), season_start = coalesce(season_start, p_start), synced_at = now()
+      where id = lid;
+  end if;
+  return lid;
+end $$;
+revoke execute on function public.league_upsert_from_playtomic(text, text, text, text, text, date) from public, anon, authenticated;

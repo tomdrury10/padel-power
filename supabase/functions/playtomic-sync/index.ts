@@ -39,12 +39,13 @@ async function managerToken(): Promise<string> {
   return t.access_token;
 }
 
-// singles or doubles from whatever Playtomic gives us, falling back to the name
+// Playtomic says how many players make a team under registration_info
 function kindOf(l: Record<string, unknown>): string {
-  const size = Number(l.team_size ?? l.players_per_team ?? (l.team_config as Record<string, unknown>)?.size ?? 0);
+  const reg = (l.registration_info ?? {}) as Record<string, unknown>;
+  const size = Number(reg.players_per_team ?? 0);
   if (size === 1) return "singles";
-  if (size === 2) return "doubles";
-  return /single/i.test(String(l.name ?? "")) ? "singles" : "doubles";
+  if (size >= 2) return "doubles";
+  return /single/i.test(String(l.league_name ?? "")) ? "singles" : "doubles";
 }
 
 Deno.serve(async (req) => {
@@ -60,16 +61,18 @@ Deno.serve(async (req) => {
     const leagues: Record<string, unknown>[] = Array.isArray(d) ? d : (d.leagues ?? d.data ?? d.content ?? []);
     const out: unknown[] = [];
     for (const l of leagues) {
-      const id = String(l.league_id ?? l.id ?? "");
-      const name = String(l.name ?? "").trim();
+      const id = String(l.league_id ?? "");
+      const name = String(l.league_name ?? l.name ?? "").trim();
       if (!id || !name) continue;
+      const start = String(l.league_start_date ?? "").slice(0, 10) || null;
       const rr = await fetch(`${SB_URL}/rest/v1/rpc/league_upsert_from_playtomic`, {
         method: "POST", headers: H,
-        body: JSON.stringify({ p_playtomic_id: id, p_name: name, p_kind: kindOf(l), p_status: String(l.status ?? ""), p_url: `https://app.playtomic.io/leagues/${id}` }),
+        body: JSON.stringify({ p_playtomic_id: id, p_name: name, p_kind: kindOf(l), p_status: String(l.league_status ?? ""), p_url: `https://app.playtomic.io/leagues/${id}`, p_start: start }),
       });
-      out.push({ id, name, status: l.status, kind: kindOf(l), ok: rr.ok });
+      const teams = Array.isArray(l.registered_teams) ? l.registered_teams.length : l.registered_teams;
+      out.push({ id, name, status: l.league_status, start, teams, kind: kindOf(l), ok: rr.ok, rr: rr.ok ? undefined : await rr.text() });
     }
-    return json({ synced: out.length, leagues: out, sample_keys: leagues[0] ? Object.keys(leagues[0]).slice(0, 40) : [] });
+    return json({ synced: out.length, leagues: out });
   } catch (e) {
     return json({ error: String((e as Error).message) }, 502);
   }
