@@ -4,6 +4,8 @@
 // Uses the internal Manager API with a real Manager login, the same way
 // the standings feed does: login for a customer token, exchange it for a
 // tenant-manager token, list leagues. Tokens last an hour, so log in every run.
+// A linked league that Playtomic no longer lists as open, pending or in
+// progress (deleted, cancelled or finished) is closed for registration here.
 //
 // Secrets: PLAYTOMIC_MANAGER_EMAIL, PLAYTOMIC_MANAGER_PASSWORD
 
@@ -79,10 +81,12 @@ Deno.serve(async (req) => {
     const d = await r.json();
     const leagues: Record<string, unknown>[] = Array.isArray(d) ? d : (d.leagues ?? d.data ?? d.content ?? []);
     const out: unknown[] = [];
+    const liveIds: string[] = [];
     for (const l of leagues) {
       const id = String(l.league_id ?? "");
       const name = String(l.league_name ?? l.name ?? "").trim();
       if (!id || !name) continue;
+      liveIds.push(id);
       const start = String(l.league_start_date ?? "").slice(0, 10) || null;
       const rr = await fetch(`${SB_URL}/rest/v1/rpc/league_upsert_from_playtomic`, {
         method: "POST", headers: H,
@@ -91,7 +95,18 @@ Deno.serve(async (req) => {
       const teams = Array.isArray(l.registered_teams) ? l.registered_teams.length : l.registered_teams;
       out.push({ id, name, status: l.league_status, start, teams, kind: kindOf(l), ok: rr.ok, rr: rr.ok ? undefined : await rr.text() });
     }
-    return json({ synced: out.length, leagues: out });
+
+    // leagues Playtomic no longer lists stop taking registrations. Only when the
+    // list came back with something, so a bad response never closes everything.
+    let closed: string[] = [];
+    if (liveIds.length) {
+      const cr = await fetch(
+        `${SB_URL}/rest/v1/leagues?playtomic_league_id=not.is.null&playtomic_league_id=not.in.(${liveIds.join(",")})&or=(registration_open.eq.true,playtomic_status.neq.GONE)&select=name`,
+        { method: "PATCH", headers: { ...H, Prefer: "return=representation" }, body: JSON.stringify({ registration_open: false, playtomic_status: "GONE", synced_at: new Date().toISOString() }) },
+      );
+      closed = cr.ok ? (await cr.json()).map((x: { name: string }) => x.name) : [];
+    }
+    return json({ synced: out.length, leagues: out, closed });
   } catch (e) {
     return json({ error: String((e as Error).message) }, 502);
   }
