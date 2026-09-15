@@ -22,6 +22,9 @@ function drawLeagueSetup() {
   $('lgLeagueList').innerHTML = LG.leagues.map(l => `
     <form class="d2-league" data-id="${l.id}">
       <h4>${esc(l.name)} <span class="d2-tag">${l.kind}</span></h4>
+      <p class="d2-hint wide" style="grid-column:1 / -1;margin:0">${l.playtomic_league_id
+        ? `Playtomic: ${esc(l.playtomic_status || 'unknown')}${l.synced_at ? ', checked ' + new Date(l.synced_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : ''}. Name and status follow Playtomic; prices, weeks and the open switch are yours.`
+        : 'Not linked to a Playtomic league.'}</p>
       <label>Member £/week<input name="member" type="number" step="0.01" min="1" max="200" value="${l.member_price_pence ? l.member_price_pence / 100 : ''}"></label>
       <label>Non-member £/week<input name="nonmember" type="number" step="0.01" min="1" max="200" value="${l.nonmember_price_pence ? l.nonmember_price_pence / 100 : ''}"></label>
       <label>Season starts<input name="start" type="date" value="${l.season_start || ''}"></label>
