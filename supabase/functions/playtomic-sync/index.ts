@@ -1,5 +1,6 @@
 // Padel Power · mirror the club's Playtomic leagues into the leagues table
-// Runs hourly from pg_cron (x-pp-key), or by hand with the same header.
+// Runs hourly from pg_cron (x-pp-key), and on demand from the Sync now
+// button on the Studio Manager Leagues page (admin session).
 // Uses the internal Manager API with a real Manager login, the same way
 // the standings feed does: login for a customer token, exchange it for a
 // tenant-manager token, list leagues. Tokens last an hour, so log in every run.
@@ -13,7 +14,12 @@ const PASSWORD = Deno.env.get("PLAYTOMIC_MANAGER_PASSWORD") ?? "";
 const TENANT = "95214d52-1a73-44be-b5f8-7aafee310010";
 const MGR = "https://manager.playtomic.io";
 
-const json = (b: unknown, s = 200) => new Response(JSON.stringify(b, null, 1), { status: s, headers: { "Content-Type": "application/json" } });
+const CORS: Record<string, string> = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-pp-key",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+const json = (b: unknown, s = 200) => new Response(JSON.stringify(b, null, 1), { status: s, headers: { ...CORS, "Content-Type": "application/json" } });
 const H = { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, "Content-Type": "application/json" };
 
 async function keyOk(req: Request) {
@@ -21,6 +27,18 @@ async function keyOk(req: Request) {
   if (!k) return false;
   const r = await fetch(`${SB_URL}/rest/v1/rpc/pp_internal_key_ok`, { method: "POST", headers: H, body: JSON.stringify({ p_key: k }) });
   return r.ok && (await r.json()) === true;
+}
+
+// an admin pressing Sync now in the Studio Manager; members and instructors are refused
+async function adminOk(req: Request) {
+  const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+  if (!token) return false;
+  const who = await fetch(`${SB_URL}/auth/v1/user`, { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${token}` } });
+  const user = who.ok ? await who.json() : null;
+  if (!user?.id) return false;
+  const r = await fetch(`${SB_URL}/rest/v1/staff_roles?user_id=eq.${user.id}&select=role`, { headers: H });
+  const rows = r.ok ? await r.json() : [];
+  return rows[0]?.role === "admin";
 }
 
 async function managerToken(): Promise<string> {
@@ -49,8 +67,9 @@ function kindOf(l: Record<string, unknown>): string {
 }
 
 Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
-  if (!(await keyOk(req))) return json({ error: "forbidden" }, 403);
+  if (!(await keyOk(req)) && !(await adminOk(req))) return json({ error: "forbidden" }, 403);
   if (!EMAIL || !PASSWORD) return json({ error: "manager_login_not_configured" }, 503);
   try {
     const tok = await managerToken();

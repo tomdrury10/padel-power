@@ -19,6 +19,7 @@ async function renderLeagues() {
 
 /* ---- setup ---- */
 function drawLeagueSetup() {
+  $('lgSyncNow').hidden = !isAdmin();
   $('lgLeagueList').innerHTML = LG.leagues.map(l => `
     <form class="d2-league" data-id="${l.id}">
       <h4>${esc(l.name)} <span class="d2-tag">${l.kind}</span></h4>
@@ -52,6 +53,24 @@ function drawLeagueSetup() {
     } catch (err) { alert('Could not save: ' + err.message); }
   }));
 }
+
+/* ---- pull new leagues from Playtomic straight away, rather than wait for the hourly sync ---- */
+$('lgSyncNow').addEventListener('click', async () => {
+  const b = $('lgSyncNow');
+  if (!isAdmin()) return;
+  b.disabled = true; b.textContent = 'Syncing…';
+  try {
+    const r = await ppFn('playtomic-sync', { method: 'POST', body: '{}' });
+    const before = new Set(LG.leagues.map(l => l.playtomic_league_id));
+    await renderLeagues();
+    const fresh = LG.leagues.filter(l => l.playtomic_league_id && !before.has(l.playtomic_league_id));
+    b.textContent = fresh.length ? `${fresh.length} new` : 'Up to date';
+  } catch (err) {
+    b.textContent = 'Sync failed';
+    alert('Could not reach Playtomic: ' + err.message);
+  }
+  setTimeout(() => { b.disabled = false; b.textContent = 'Sync now'; }, 2500);
+});
 
 /* ---- members ---- */
 function drawMembers() {
