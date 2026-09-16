@@ -112,7 +112,12 @@ function render() {
   if (page === 'overview') renderOverview();
   if (page === 'schedule') renderSchedule();
   if (page === 'bookings') renderBookings();
-  if (page === 'enquiries') renderEnquiries();
+  if (page === 'enquiries') {
+    // don't wipe a half-typed reply when the 60s poll re-renders
+    const a = document.activeElement;
+    if (a && $('pgEnquiries').contains(a) && ['INPUT', 'TEXTAREA', 'SELECT'].includes(a.tagName)) return;
+    renderEnquiries();
+  }
   if (page === 'reports') renderReports();
   if (page === 'guides') renderGuides();
   if (page === 'softplay' && typeof renderSoftplay === 'function') {
@@ -659,6 +664,9 @@ async function openWaiverView(email) {
    ENQUIRIES (contact form submissions)
    ============================================================ */
 let enqRows = [], enqState = 'new', enqWho = '', enqReplyOpen = null;
+// a reply in progress, kept here so re-rendering the list doesn't throw it away
+let enqDraft = { id: null, body: '' };
+const enqDraftFor = id => (enqDraft.id === String(id) ? enqDraft.body : '');
 const ENQ_STAFF = ['Grace', 'Joe'];
 async function loadEnquiries() {
   enqRows = await ppApi('enquiries?select=*&order=created_at.desc');
@@ -700,7 +708,8 @@ function renderEnquiries() {
       </div>
       ${enqReplyOpen === String(e.id) ? `
       <form class="d2-enq-form" data-id="${e.id}">
-        <textarea class="d2-input" name="body" rows="4" required maxlength="4000" placeholder="Hi ${esc(e.name.split(' ')[0])}, thanks for getting in touch…"></textarea>
+        <textarea class="d2-input" name="body" rows="4" required maxlength="4000" placeholder="Hi ${esc(e.name.split(' ')[0])}, thanks for getting in touch…">
+${esc(enqDraftFor(e.id))}</textarea>
         <div class="d2-form-row">
           <button class="d2-btn primary sm" type="submit">Open in Outlook</button>
           <span class="d2-sub" style="margin:0">Opens a pre-filled reply for you to check and send.</span>
@@ -730,8 +739,10 @@ function renderEnquiries() {
       enqReplyOpen = enqReplyOpen === b.dataset.id ? null : b.dataset.id;
       renderEnquiries();
       const f = $('enqList').querySelector('.d2-enq-form textarea');
-      if (f) f.focus();
+      if (f) { f.focus(); f.setSelectionRange(f.value.length, f.value.length); }
     }));
+  $('enqList').querySelectorAll('.d2-enq-form textarea').forEach(t =>
+    t.addEventListener('input', () => { enqDraft = { id: t.closest('.d2-enq-form').dataset.id, body: t.value }; }));
   $('enqList').querySelectorAll('.d2-enq-form').forEach(f =>
     f.addEventListener('submit', async ev => {
       ev.preventDefault();
@@ -752,6 +763,7 @@ function renderEnquiries() {
         e.replies = replies;
         e.handled_at = e.handled_at || new Date().toISOString();
         enqReplyOpen = null;
+        enqDraft = { id: null, body: '' };
         await loadEnquiries();
       } catch {}
       renderEnquiries();
