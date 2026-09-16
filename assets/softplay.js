@@ -63,7 +63,7 @@
   function renderStrip() {
     const el = $('spStrip');
     if (!RULES.softplay.open) {
-      el.innerHTML = '<span>Soft play is opening soon. Sessions appear here as they are added and booking switches on with the doors.</span><a href="https://wa.me/447595250776" target="_blank" rel="noopener">Ask on WhatsApp →</a>';
+      el.innerHTML = '<span>Soft play is opening soon.</span><a href="https://wa.me/447595250776" target="_blank" rel="noopener">Ask on WhatsApp →</a>';
       return;
     }
     if (Auth.userId()) {
@@ -79,8 +79,6 @@
     activeDate = dates[0];
     await Softplay.load(iso(dates[0]), iso(dates[dates.length - 1]));
     if (Auth.userId()) await Member.load().catch(() => {});
-    const sp = RULES.softplay;
-    $('spNote').textContent = `Supervised sessions need ${sp.minChildren} children booked to go ahead and take up to ${sp.maxChildren}. If one is not going ahead you'll get a text ${RULES.cutoffHours} hours before the start and a full refund. Ages ${sp.minAge} to ${sp.maxAge}.`;
     renderStrip(); renderDates(); renderList();
   }).catch(() => {
     $('spList').innerHTML = '<p class="pempty">The booking system is temporarily unavailable. Please try again shortly, or message us on WhatsApp.</p>';
