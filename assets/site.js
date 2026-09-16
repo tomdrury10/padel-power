@@ -11,6 +11,28 @@
 // honour the visitor's reduced-motion setting everywhere below
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+// announcement bar across the top of every public page
+(function () {
+  const header = document.querySelector('header');
+  if (!header || header.querySelector('.announce')) return;
+  const css = document.createElement('style');
+  css.textContent = `
+    header .announce{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:6px 18px;
+      padding:9px var(--pad);background:var(--blue);color:var(--ink);
+      font-family:var(--mono);font-size:11.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;text-align:center}
+    header .announce b{font-weight:700}
+    header .announce a{color:var(--ink);text-decoration:underline;text-underline-offset:3px;white-space:nowrap}
+    header .announce a:hover,header .announce a:focus-visible{text-decoration-thickness:2px}
+    .page-hero{padding-top:clamp(206px,calc(24vh + 36px),286px)}
+    @media (max-width:820px){.page-hero{padding-top:176px}}`;
+  document.head.appendChild(css);
+  const bar = document.createElement('div');
+  bar.className = 'announce';
+  bar.innerHTML = '<b>Pilates Studio and Gym now open</b>' +
+    '<a href="/pilates/">Book Pilates →</a><a href="/gym/">See the Gym →</a>';
+  header.prepend(bar);
+})();
+
 // nav scroll state
 const hd = document.querySelector('header');
 addEventListener('scroll', () => hd.classList.toggle('scrolled', scrollY > 40), { passive: true });
@@ -152,7 +174,7 @@ if (heroVid && (reduceMotion || saveData || !heroSrc)) {
 }
 
 
-// ---------------- cookie choice for Google Analytics ----------------
+// ---------------- cookie choice for Google Analytics and Microsoft Clarity ----------------
 // Every page starts with analytics consent denied (see the gtag snippet in
 // each page head). Nothing is stored by Google until the visitor accepts
 // here; the choice is kept in this browser and can be changed from the
@@ -161,8 +183,19 @@ if (heroVid && (reduceMotion || saveData || !heroSrc)) {
   const KEY = 'pp_consent';
   const read = () => { try { return localStorage.getItem(KEY); } catch (e) { return null; } };
   const save = v => { try { localStorage.setItem(KEY, v); } catch (e) {} };
+  // Microsoft Clarity (session recordings and heatmaps) loads only after a yes
+  const clarity = () => {
+    if (window.clarity) return;
+    (function(c,l,a,r,i,t,y){
+      c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+      t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+      y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "yjedl5vk4h");
+  };
   const apply = v => {
     if (typeof gtag === 'function') gtag('consent', 'update', { analytics_storage: v === 'granted' ? 'granted' : 'denied' });
+    if (v === 'granted') clarity();
+    else if (typeof window.clarity === 'function') window.clarity('consent', false);
   };
   let box = null;
   const close = () => { if (box) { box.remove(); box = null; } };
@@ -173,7 +206,7 @@ if (heroVid && (reduceMotion || saveData || !heroSrc)) {
     box.setAttribute('role', 'dialog');
     box.setAttribute('aria-live', 'polite');
     box.setAttribute('aria-label', 'Cookie choices');
-    box.innerHTML = '<p>We use Google Analytics to see how the site is used. It sets cookies only if you say yes. <a href="/privacy-policy/">Privacy policy</a></p>'
+    box.innerHTML = '<p>We use Google Analytics and Microsoft Clarity to see how the site is used. They set cookies only if you say yes. <a href="/privacy-policy/">Privacy policy</a></p>'
       + '<div class="ck-btns"><button type="button" class="btn btn-blue" data-ck="granted">Accept analytics</button>'
       + '<button type="button" class="btn btn-ghost" data-ck="denied">No thanks</button></div>';
     box.querySelectorAll('[data-ck]').forEach(b => b.addEventListener('click', () => {
