@@ -1,16 +1,15 @@
 User-agent: *
 Allow: /
 
-# staff and transactional pages: not for search engines
-Disallow: /admin/
-Disallow: /login/
-Disallow: /book/
-Disallow: /cancel/
-Disallow: /account/
+# Staff, transactional and unlaunched pages are kept out of the index with
+# <meta name="robots" content="noindex"> on the pages themselves.
+# They are deliberately NOT disallowed here: Google has to be able to crawl a
+# page to see its noindex tag. Blocking them in robots.txt instead causes
+# "Blocked by robots.txt" in Search Console and leaves the URLs indexable
+# from external links.
 
-# draft pages, not launched yet
-Disallow: /gym/
-Disallow: /soft-play/
-
+# Crawler traps only: never any real content behind these.
+Disallow: /*?*session_id=
+Disallow: /*?*token=
 
 Sitemap: https://www.padelpower.uk/sitemap.xml
