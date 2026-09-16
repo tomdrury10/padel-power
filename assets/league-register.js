@@ -232,6 +232,7 @@
       profile_incomplete: 'Add your mobile number to your account first.',
       phone_unverified: 'Please verify your mobile first.',
       bad_playtomic_url: 'That does not look like a Playtomic profile link.',
+      playtomic_locked: 'You are already in this league on Playtomic, so your profile link cannot be changed here. Message the club to change it.',
       code_not_found: 'That partner code was not recognised. Check it with your partner.',
       own_code: 'That is your own partner code. Your partner needs to enter it, not you.',
       league_mismatch: 'Your partner registered for a different league. Pick the same one.',

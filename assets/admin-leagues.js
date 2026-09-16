@@ -122,6 +122,16 @@ function lgStatus(r) {
   if (r.payments_taken > 0) return 'Payment active';
   return 'Scheduled';
 }
+// is the player a club customer in Playtomic Manager?
+function lgCustomer(r) {
+  const s = r.playtomic_customer_status;
+  if (s === 'linked') return '<br><small>Customer ✓</small>';
+  if (s === 'mismatch') return r.playtomic_customer_user_id
+    ? `<br><span class="lg-pill warn">Customer: check Manager</span><br><small>Playtomic used account ${esc(r.playtomic_customer_user_id)}, not ${esc(r.playtomic_player_id || '?')}${r.playtomic_customer_error ? ` (${esc(r.playtomic_customer_error)})` : ''}.</small>`
+    : `<br><span class="lg-pill warn">Customer: check Manager</span><br><small>${esc(r.playtomic_customer_error || 'Customer may not have been created.')}</small>`;
+  if (s === 'error') return `<br><span class="lg-pill bad">Customer failed</span><br><small>${esc(r.playtomic_customer_error || '')}</small>`;
+  return '';
+}
 function drawRegs() {
   const lf = $('lgLeagueFilter');
   lf.innerHTML = '<button data-league="">All leagues</button>' + LG.leagues.map(l => `<button data-league="${l.id}">${esc(l.name)}</button>`).join('');
@@ -146,10 +156,12 @@ function drawRegs() {
       <td>${l.kind === 'singles' ? '<small>n/a</small>' : p ? esc(p.name) : `<small>code ${r.partner_code}</small>`}</td>
       <td class="lg-status"><span class="lg-pill ${tone(st)}">${st}</span></td>
       <td>${esc(r.card_label || (r.card_status === 'authorised' ? 'saved' : '—'))}${r.last_payment_status === 'failed' ? '<br><small>last payment failed</small>' : ''}</td>
-      <td>${r.playtomic_added_at ? (r.playtomic_team_id ? 'Added (auto)' : 'Added') : r.playtomic_error ? `<span class="lg-pill bad">Failed</span><br><small>${esc(r.playtomic_error)}</small>` : '—'}</td>
+      <td>${r.playtomic_added_at ? (r.playtomic_team_id ? 'Added (auto)' : 'Added') : r.playtomic_error ? `<span class="lg-pill bad">Failed</span><br><small>${esc(r.playtomic_error)}</small>` : '—'}${lgCustomer(r)}</td>
       <td>${isAdmin() ? `<select class="lg-act" data-id="${r.id}">
         <option value="">Action…</option>
         <option value="playtomic">${r.playtomic_added_at ? 'Unmark Playtomic' : 'Mark added to Playtomic'}</option>
+        ${r.playtomic_enrolling_at && !r.playtomic_team_id && !r.playtomic_added_at ? '<option value="retry">Retry Playtomic add</option>' : ''}
+        ${r.playtomic_customer_status === 'mismatch' || r.playtomic_customer_status === 'error' ? '<option value="customer">Mark customer sorted</option>' : ''}
         <option value="member">Set as member</option>
         <option value="non_member">Set as non-member</option>
         <option value="price">Set weekly price</option>
@@ -171,6 +183,14 @@ async function lgAction(id, act) {
   const rpc = (name, args) => ppApi(`rpc/${name}`, { method: 'POST', body: JSON.stringify(args) });
   try {
     if (act === 'playtomic') await rpc('league_mark_playtomic', { p_reg: id, p_added: !r.playtomic_added_at });
+    if (act === 'retry') {
+      if (!confirm(`Check ${r.name} is not already in this league in Playtomic Manager. Try adding them again on the next sync?`)) return;
+      await rpc('league_retry_enrol', { p_reg: id });
+    }
+    if (act === 'customer') {
+      if (!confirm(`Mark ${r.name} as a correctly set up Playtomic customer? Only do this once you have fixed their customer record in Playtomic Manager.`)) return;
+      await rpc('league_mark_customer', { p_reg: id });
+    }
     if (act === 'member' || act === 'non_member') {
       if (!confirm(`Set ${r.name} as ${act === 'member' ? 'a member' : 'a non-member'}? Their weekly price changes to the league's ${act === 'member' ? 'member' : 'non-member'} rate. Only possible before their first payment.`)) return;
       await fn({ action: 'set_membership', status: act });

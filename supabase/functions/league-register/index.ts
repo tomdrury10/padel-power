@@ -208,8 +208,16 @@ Deno.serve(async (req) => {
       if (reg && reg.card_status === "authorised") return json({ error: "already_registered" }, 409);
       const name = profile.full_name || user.email.split("@")[0];
       if (reg) {
+        // a new Playtomic profile goes through league_set_identity, which refuses
+        // once the player is being or has been added to the Playtomic league
+        const from = reg.playtomic_player_id ?? null;
+        if (from !== (playerId ?? null)) {
+          const ok = await rpc("league_set_identity", { p_reg: reg.id, p_player: playerId, p_url: playtomic });
+          if (ok !== true) return json({ error: "playtomic_locked" }, 409);
+          await log(reg.id, "playtomic_identity_changed", { from, to: playerId ?? null }, user.id);
+        }
         [reg] = await patch("league_registrations", reg.id, {
-          playtomic_url: playtomic, playtomic_player_id: playerId, playtomic_found: m.found, playtomic_benefits: m.benefits,
+          playtomic_found: m.found, playtomic_benefits: m.benefits,
           membership_status: membership, membership_source: m.source, membership_checked_at: new Date().toISOString(),
           weekly_price_pence: price, terms_accepted_at: new Date().toISOString(), name, email: user.email, phone: profile.phone,
         });
