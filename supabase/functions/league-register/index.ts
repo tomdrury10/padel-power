@@ -141,8 +141,39 @@ function schedule(league: Record<string, unknown>) {
   return { season_start: league.season_start, weeks, payments_total: weeks,
     first_payment_date: future ? iso(start) : null, last_payment_date: iso(last) };
 }
-const leagueOpen = (l: Record<string, unknown>) =>
-  !!(l && l.registration_open && l.member_price_pence && l.nonmember_price_pence && l.season_start && l.weeks);
+// Who may register right now (migration 021, league_state):
+//   open     anyone
+//   early    returning players only (the 5-day head start)
+//   full     only someone completing a pair that already has a place
+//   not_yet / closed  nobody
+// Returns null when allowed, otherwise the error to send back.
+async function admission(leagueId: string, playerId: string | null, regId: string | null, partnerCode: string | null) {
+  const state = await rpc("league_state", { p_league: leagueId });
+  if (state === "open") return null;
+  const [w] = await rpc("league_windows", { p_league: leagueId }) as { general_open: string; early_open: string; close_at: string }[];
+  const isReturning = async (id: string | null) => !!id && (await rpc("league_is_returning", { p_player: id })) === true;
+  // during the head start both players of a pair must be returning players
+  const returning = async () => {
+    if (!(await isReturning(playerId))) return false;
+    if (!partnerCode && !regId) return true;
+    const partner = await rpc("league_partner_player", { p_league: leagueId, p_reg: regId, p_partner_code: partnerCode });
+    return partner == null || await isReturning(String(partner));
+  };
+  if (state === "early") {
+    return (await returning()) ? null : { error: "early_access_only", opens_at: w?.general_open ?? null };
+  }
+  if (state === "full") {
+    const ok = await rpc("league_admits", { p_league: leagueId, p_reg: regId, p_partner_code: partnerCode });
+    if (ok !== true) return { error: "league_full" };
+    // a full league can still be inside the head start
+    if (w && Date.now() < Date.parse(w.general_open) && !(await returning())) {
+      return { error: "early_access_only", opens_at: w.general_open };
+    }
+    return null;
+  }
+  if (state === "not_yet") return { error: "league_not_open", opens_at: w?.early_open ?? null, general_opens_at: w?.general_open ?? null };
+  return { error: "league_closed" };
+}
 
 async function customerFor(user: { id: string; email: string }, name: string) {
   const [prof] = await db(`profiles?user_id=eq.${user.id}&select=stripe_customer_id`);
@@ -182,8 +213,8 @@ Deno.serve(async (req) => {
 
     // ---------------- member actions ----------------
     if (action === "quote" || action === "register") {
-      const [league] = await db(`leagues?id=eq.${body.league_id}&select=*`);
-      if (!leagueOpen(league)) return json({ error: "league_closed" }, 409);
+      const [league] = await db(`leagues?id=eq.${encodeURIComponent(String(body.league_id))}&select=*`);
+      if (!league) return json({ error: "league_closed" }, 409);
 
       const [profile] = await db(`profiles?user_id=eq.${user.id}&select=full_name,phone,phone_verified_at`);
       const [settings] = await db("settings?id=eq.1&select=require_phone_verification");
@@ -193,6 +224,11 @@ Deno.serve(async (req) => {
       const playtomic = String(body.playtomic_url || "").trim();
       if (!PLAYTOMIC.test(playtomic)) return json({ error: "bad_playtomic_url" }, 400);
       const playerId = playerIdFrom(playtomic);
+      const partnerCode = body.partner_code ? String(body.partner_code).trim().toLowerCase() : null;
+      const [existing] = await db(`league_registrations?league_id=eq.${league.id}&user_id=eq.${user.id}&cancelled_at=is.null&select=id,pair_id`);
+      // an existing pair is judged on its real partner; a code is only used to find a new one
+      const denied = await admission(league.id, playerId, existing?.id ?? null, existing?.pair_id ? null : partnerCode);
+      if (denied) return json(denied, 409);
       const m = await resolveMembership(user.email, profile.phone, playerId);
       const membership = m.status;
       const price = membership === "member" ? league.member_price_pence : league.nonmember_price_pence;
@@ -234,8 +270,8 @@ Deno.serve(async (req) => {
         await log(reg.id, "registration_started", { membership, source: m.source, playtomic_found: m.found, weekly_price_pence: price }, user.id);
       }
 
-      if (league.kind === "doubles" && body.partner_code && !reg.pair_id) {
-        const r = await rpc("league_join_by_code", { p_reg: reg.id, p_code: String(body.partner_code) });
+      if (league.kind === "doubles" && partnerCode && !reg.pair_id) {
+        const r = await rpc("league_join_by_code", { p_reg: reg.id, p_code: partnerCode });
         if (!r?.ok) return json({ error: r?.reason || "code_not_found" }, 409);
       }
 
@@ -249,7 +285,11 @@ Deno.serve(async (req) => {
       if (!reg) return json({ error: "not_found" }, 404);
       const [league] = await db(`leagues?id=eq.${reg.league_id}&select=*`);
       if (action === "resume" && reg.card_status === "authorised") return json({ error: "already_registered" }, 409);
-      if (action === "resume" && !leagueOpen(league)) return json({ error: "league_closed" }, 409);
+      if (action === "update_card" && !reg.stripe_subscription_id) return json({ error: "not_found" }, 404);
+      if (action === "resume") {
+        const denied = await admission(league.id, reg.playtomic_player_id ?? null, reg.id, null);
+        if (denied) return json(denied, 409);
+      }
       const customer = reg.stripe_customer_id || await customerFor(user, reg.name);
       const url = await setupSession(reg, customer, action === "resume" ? "league" : "league_card", origin);
       return json({ url });

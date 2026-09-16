@@ -180,7 +180,13 @@ async function leagueCardSaved(s: Record<string, unknown>, m: Record<string, str
   await stripe(`customers/${customer}`, { "invoice_settings[default_payment_method]": pmId });
 
   if (m.type === "league_card") {
-    if (reg.stripe_subscription_id && !reg.billing_ended_at) {
+    // only a registration that already has weekly billing can swap its card;
+    // anything else has to finish through the normal (admission-checked) flow
+    if (!reg.stripe_subscription_id) {
+      await log(reg.id, "card_update_ignored", { reason: "no subscription" });
+      return new Response("card update ignored: no subscription", { status: 200 });
+    }
+    if (!reg.billing_ended_at) {
       await stripe(`subscriptions/${reg.stripe_subscription_id}`, { default_payment_method: pmId });
     }
     await patchReg(reg.id, { stripe_payment_method_id: pmId, card_label: label, card_status: "authorised", stripe_customer_id: customer });

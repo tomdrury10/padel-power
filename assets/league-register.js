@@ -25,8 +25,23 @@
     return;
   }
 
-  const leagues = await ppApi('leagues?select=*&order=sort');
-  const open = l => l.registration_open && l.member_price_pence && l.nonmember_price_pence && l.season_start && l.weeks;
+  const [leagues, states] = await Promise.all([
+    ppApi('leagues?select=*&order=sort'),
+    ppApi('rpc/league_public_states', { method: 'POST', body: '{}' }),
+  ]);
+  const ST = Object.fromEntries((states || []).map(x => [x.id, x]));
+  const when = ts => new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(ts));
+  // the server has the final say; this only decides what can be picked
+  // a full league stays selectable: a partner joining a waiting player can still get in
+  const open = l => ['open', 'early', 'full'].includes((ST[l.id] || {}).state);
+  const note = l => {
+    const st = ST[l.id] || {};
+    if (st.state === 'early') return ` (returning players only until ${when(st.general_open)})`;
+    if (st.state === 'full') return ' (full, partners of registered players only)';
+    if (st.state === 'not_yet' && st.early_open) return ` (opens ${when(st.general_open)}, returning players ${when(st.early_open)})`;
+    if (st.state === 'open') return '';
+    return ' (registration closed)';
+  };
   let mine = await loadMine();
 
   // returning from Stripe, or already registered and not asking for another
@@ -38,7 +53,7 @@
     show('lgForm');
     const sel = $('lgLeague');
     sel.innerHTML = '<option value="">Choose a league</option>' + leagues.map(l =>
-      `<option value="${l.id}"${open(l) ? '' : ' disabled'}>${esc(l.name)}${open(l) ? '' : ' (registration closed)'}</option>`).join('');
+      `<option value="${l.id}"${open(l) ? '' : ' disabled'}>${esc(l.name)}${note(l)}</option>`).join('');
     // ?league=mens-doubles from the league cards picks that league for them
     const want = (q.get('league') || '').toLowerCase();
     const slug = n => String(n).toLowerCase().replace(/['’]/g, '').replace(/[^a-z0-9]+/g, '-');
@@ -69,7 +84,7 @@
       const btn = e.target.querySelector('button[type=submit]');
       btn.disabled = true;
       try {
-        quote = await ppFn('league-register', { method: 'POST', body: JSON.stringify({ action: 'quote', league_id: l.id, playtomic_url: $('lgPlaytomic').value.trim() }) });
+        quote = await ppFn('league-register', { method: 'POST', body: JSON.stringify({ action: 'quote', league_id: l.id, playtomic_url: $('lgPlaytomic').value.trim(), partner_code: l.kind === 'doubles' ? ($('lgCode').value.trim() || null) : null }) });
         showQuote(l, quote);
       } catch (ex) {
         err.textContent = friendly(ex.message); err.hidden = false;
@@ -227,7 +242,10 @@
 
   function friendly(code) {
     return {
-      league_closed: 'Registration for that league is not open yet.',
+      league_closed: 'Registration for that league is closed.',
+      league_not_open: 'Registration for that league has not opened yet.',
+      early_access_only: 'Registration is only open to players from our recent leagues at the moment. It opens to everyone soon, check the date next to the league.',
+      league_full: 'Sorry, that league is full. If your partner has already registered, enter their partner code.',
       already_registered: 'You are already registered for that league.',
       profile_incomplete: 'Add your mobile number to your account first.',
       phone_unverified: 'Please verify your mobile first.',

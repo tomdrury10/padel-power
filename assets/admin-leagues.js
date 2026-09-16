@@ -3,53 +3,73 @@
    League setup, club member list, registrations with actions.
    Loaded after admin.js; renderLeagues() is called by its router.
    ============================================================ */
-const LG = { leagues: [], regs: [], members: [], benefits: [], audit: [], league: '', status: '', search: '' };
+const LG = { leagues: [], states: {}, regs: [], members: [], benefits: [], audit: [], league: '', status: '', search: '' };
 const lgGbp = p => '£' + (p % 100 === 0 ? p / 100 : (p / 100).toFixed(2));
+const lgWhen = ts => ts ? new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(ts)) : '—';
+// datetime-local works in the browser's clock; the club is in London, as is staff
+const lgLocal = ts => { if (!ts) return ''; const d = new Date(ts); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16); };
+const LG_STATE = { open: ['Open', 'good'], early: ['Returning players only', 'warn'], full: ['Full', 'bad'], not_yet: ['Not open yet', 'warn'], closed: ['Closed', ''] };
 const lgDate = iso => iso ? new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(iso + 'T12:00:00')) : '';
 
 async function renderLeagues() {
-  [LG.leagues, LG.regs, LG.members, LG.benefits] = await Promise.all([
+  let states;
+  [LG.leagues, states, LG.regs, LG.members, LG.benefits] = await Promise.all([
     ppApi('leagues?select=*&order=sort'),
+    ppApi('rpc/league_public_states', { method: 'POST', body: '{}' }),
     ppApi('league_registrations?select=*&order=created_at.desc'),
     ppApi('league_members?select=*&order=created_at.desc'),
     ppApi('league_member_benefits?select=*&order=name'),
   ]);
+  LG.states = Object.fromEntries((states || []).map(x => [x.id, x]));
   drawLeagueSetup(); drawMembers(); drawBenefits(); drawRegs();
 }
 
 /* ---- setup ---- */
 function drawLeagueSetup() {
   $('lgSyncNow').hidden = !isAdmin();
-  $('lgLeagueList').innerHTML = LG.leagues.map(l => `
+  $('lgLeagueList').innerHTML = LG.leagues.map(l => {
+    const st = LG.states[l.id] || {};
+    const [label, tone] = LG_STATE[st.state] || ['Closed', ''];
+    return `
     <form class="d2-league" data-id="${l.id}">
-      <h4>${esc(l.name)} <span class="d2-tag">${l.kind}</span></h4>
+      <h4>${esc(l.name)} <span class="d2-tag">${l.kind}</span> <span class="lg-pill ${tone}">${label}</span></h4>
+      <p class="d2-hint wide" style="grid-column:1 / -1;margin:0">Returning players from <b>${lgWhen(st.early_open)}</b> · everyone from <b>${lgWhen(st.general_open)}</b> · closes <b>${lgWhen(st.close_at)}</b> · places <b>${st.capacity ? `${st.taken} of ${st.capacity}` : 'no limit'}</b>${st.state === 'closed' && !(l.member_price_pence && l.nonmember_price_pence && l.weeks && l.season_start) ? ' · <b>needs prices and weeks to open</b>' : ''}</p>
       <p class="d2-hint wide" style="grid-column:1 / -1;margin:0">${l.playtomic_league_id
-        ? `Playtomic: ${esc(l.playtomic_status || 'unknown')}${l.synced_at ? ', checked ' + new Date(l.synced_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : ''}. Name and status follow Playtomic; prices, weeks and the open switch are yours.`
+        ? `Playtomic: ${esc(l.playtomic_status || 'unknown')}${l.synced_at ? ', checked ' + new Date(l.synced_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : ''}. Name, start date, closing time and size follow Playtomic; prices, weeks and the registration setting are yours.`
         : 'Not linked to a Playtomic league.'}</p>
       <label>Member £/week<input name="member" type="number" step="0.01" min="1" max="200" value="${l.member_price_pence ? l.member_price_pence / 100 : ''}"></label>
       <label>Non-member £/week<input name="nonmember" type="number" step="0.01" min="1" max="200" value="${l.nonmember_price_pence ? l.nonmember_price_pence / 100 : ''}"></label>
-      <label>Season starts<input name="start" type="date" value="${l.season_start || ''}"></label>
+      <label>Season starts${l.playtomic_league_id ? ' <small>(from Playtomic)</small>' : ''}<input name="start" type="date" value="${l.season_start || ''}"${l.playtomic_league_id ? ' readonly' : ''}></label>
       <label>Weeks<input name="weeks" type="number" min="1" max="52" value="${l.weeks || ''}"></label>
       <label class="wide">Playtomic league link<input name="playtomic" type="url" value="${esc(l.playtomic_url || '')}" placeholder="https://app.playtomic.io/..."></label>
+      <label>Registration<select name="mode">
+        <option value="auto"${l.registration_mode === 'auto' ? ' selected' : ''}>Automatic (dates and places)</option>
+        <option value="open"${l.registration_mode === 'open' ? ' selected' : ''}>Force open</option>
+        <option value="closed"${l.registration_mode === 'closed' ? ' selected' : ''}>Force closed</option>
+      </select></label>
+      <label>Open to everyone from <small>(blank = 3 weeks before the start)</small><input name="opens" type="datetime-local" value="${lgLocal(l.opens_at)}"></label>
       <div class="d2-form-row">
-        <label class="d2-check"><input name="open" type="checkbox"${l.registration_open ? ' checked' : ''}><span>Registration open</span></label>
         <button class="d2-btn primary" type="submit"${isAdmin() ? '' : ' disabled'}>Save</button>
       </div>
-    </form>`).join('');
+    </form>`;
+  }).join('');
   $('lgLeagueList').querySelectorAll('form').forEach(f => f.addEventListener('submit', async e => {
     e.preventDefault();
     const pence = v => v === '' ? null : Math.round(parseFloat(v) * 100);
     const body = {
       member_price_pence: pence(f.member.value), nonmember_price_pence: pence(f.nonmember.value),
-      season_start: f.start.value || null, weeks: f.weeks.value ? parseInt(f.weeks.value, 10) : null,
-      playtomic_url: f.playtomic.value.trim() || null, registration_open: f.open.checked,
+      ...(LG.leagues.find(x => x.id === f.dataset.id)?.playtomic_league_id ? {} : { season_start: f.start.value || null }),
+      weeks: f.weeks.value ? parseInt(f.weeks.value, 10) : null,
+      playtomic_url: f.playtomic.value.trim() || null, registration_mode: f.mode.value,
+      opens_at: f.opens.value ? new Date(f.opens.value).toISOString() : null,
     };
-    if (body.registration_open && !(body.member_price_pence && body.nonmember_price_pence && body.season_start && body.weeks)) {
-      alert('To open registration this league needs both prices, a start date and a number of weeks.'); return;
+    if (body.registration_mode !== 'closed' && !(body.member_price_pence && body.nonmember_price_pence && (body.season_start || f.start.value) && body.weeks)) {
+      if (body.registration_mode === 'open') { alert('To force registration open this league needs both prices, a start date and a number of weeks.'); return; }
     }
     try {
       await ppApi(`leagues?id=eq.${f.dataset.id}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(body) });
-      f.querySelector('button').textContent = 'Saved'; setTimeout(() => { f.querySelector('button').textContent = 'Save'; }, 1500);
+      f.querySelector('button').textContent = 'Saved';
+      setTimeout(() => { renderLeagues(); }, 900);
     } catch (err) { alert('Could not save: ' + err.message); }
   }));
 }

@@ -24,6 +24,8 @@ spaces removed. Dates are sent as `date` (YYYY-MM-DD), `day` (Monday) and
 | `pack_purchased` | stripe-webhook after a pack payment | member SMS with `credits`, `expires_pretty`, `account_url` |
 | `enquiry_created` | trigger on `enquiries` insert | email to Joe and Grace, cc Tom |
 | `league_payment_failed` | stripe-webhook on `invoice.payment_failed` | player SMS with `league`, `amount`, `update_url` |
+| `league_registered` | trigger `league_reg_notify` when a registration's weekly subscription is first saved (card saved), once | player SMS with `league`, `weekly_price`, `weeks`, `first_payment_pretty`, `partner_needed`, `share_url` (route added 16 Sept) |
+| `league_cancelled` | same trigger when `cancelled_at` is first set (admin cancel), once | player SMS with `league` (route added 16 Sept) |
 | `softplay_booking_created` | trigger on `softplay_bookings` insert | parent SMS (route added 14 Sept) with `session_kind`, `children`, `child_names`, `date_pretty`, `time`, `end_time`, `cancel_url` |
 | `softplay_session_cancelled` | `_cancel_softplay_session` (admin cancel or `auto_cancel_softplay` cron), once per live booking | parent SMS; `reason`, `auto`, `paid`, `amount`, `account_url` |
 

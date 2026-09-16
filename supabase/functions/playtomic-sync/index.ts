@@ -5,7 +5,14 @@
 // the standings feed does: login for a customer token, exchange it for a
 // tenant-manager token, list leagues. Tokens last an hour, so log in every run.
 // A linked league that Playtomic no longer lists as open, pending or in
-// progress (deleted, cancelled or finished) is closed for registration here.
+// progress (deleted, cancelled or finished) is marked GONE, which closes it.
+//
+// Each league also brings the dates and size that drive registration
+// (league_state in migration 021): the start date as a London calendar date,
+// Playtomic's enrolment end, capacity (groups x teams per group) and the ids
+// of active teams (no leaving_reason). Players in active teams of leagues in
+// progress, or finished in the last 4 months, are the "returning players"
+// who get the 5-day head start; that list is rebuilt on every complete sync.
 //
 // Secrets: PLAYTOMIC_MANAGER_EMAIL, PLAYTOMIC_MANAGER_PASSWORD
 
@@ -59,6 +66,40 @@ async function managerToken(): Promise<string> {
   return t.access_token;
 }
 
+const LIST = `${MGR}/api/v1/leagues?tenant_id=${TENANT}&visibility=PRIVATE,PUBLIC&sport_id=PADEL&sort=league_start_date,desc`;
+const PAGE = 50;
+const RETURNING_MONTHS = 4;
+
+// Playtomic dates carry no zone and are UTC ("2026-10-18T23:00:00" is 19 Oct in London)
+const utc = (v: unknown) => {
+  const s = String(v ?? "");
+  if (!s) return null;
+  const d = new Date(/[zZ]|[+-]\d\d:?\d\d$/.test(s) ? s : `${s}Z`);
+  return isNaN(d.getTime()) ? null : d;
+};
+const londonDate = (d: Date | null) =>
+  d ? new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London", year: "numeric", month: "2-digit", day: "2-digit" }).format(d) : null;
+const plusMonths = (d: Date, n: number) => { const x = new Date(d); x.setUTCMonth(x.getUTCMonth() + n); return x; };
+
+type Team = { team_id?: string; players?: { user_id?: string }[]; registered_info?: { leaving_reason?: unknown } };
+const activeTeams = (l: Record<string, unknown>) =>
+  (Array.isArray(l.registered_teams) ? l.registered_teams as Team[] : []).filter((t) => !t.registered_info?.leaving_reason);
+
+// every page of a listing; null if any page fails or is not a list
+async function listAll(tok: string, statuses: string): Promise<Record<string, unknown>[] | null> {
+  const all: Record<string, unknown>[] = [];
+  for (let page = 0; page < 20; page++) {
+    const r = await fetch(`${LIST}&status=${statuses}&page=${page}&size=${PAGE}`, { headers: { Authorization: `Bearer ${tok}` }, signal: AbortSignal.timeout(20_000) }).catch(() => null);
+    if (!r || !r.ok) return null;
+    const d = await r.json().catch(() => null);
+    const rows = Array.isArray(d) ? d : null;
+    if (!rows) return null;
+    all.push(...rows);
+    if (rows.length < PAGE) return all;
+  }
+  return null;
+}
+
 // Playtomic says how many players make a team under registration_info
 function kindOf(l: Record<string, unknown>): string {
   const reg = (l.registration_info ?? {}) as Record<string, unknown>;
@@ -75,11 +116,9 @@ Deno.serve(async (req) => {
   if (!EMAIL || !PASSWORD) return json({ error: "manager_login_not_configured" }, 503);
   try {
     const tok = await managerToken();
-    const u = `${MGR}/api/v1/leagues?tenant_id=${TENANT}&status=OPEN,PENDING,IN_PROGRESS&visibility=PRIVATE,PUBLIC&sport_id=PADEL&sort=league_start_date,desc&page=0&size=50`;
-    const r = await fetch(u, { headers: { Authorization: `Bearer ${tok}` } });
-    if (!r.ok) return json({ error: "list_failed", status: r.status, body: (await r.text()).slice(0, 300) }, 502);
-    const d = await r.json();
-    const leagues: Record<string, unknown>[] = Array.isArray(d) ? d : (d.leagues ?? d.data ?? d.content ?? []);
+    const fetchedAt = new Date().toISOString();
+    const leagues = await listAll(tok, "OPEN,PENDING,IN_PROGRESS");
+    if (!leagues) return json({ error: "list_failed" }, 502);
     const out: unknown[] = [];
     const liveIds: string[] = [];
     for (const l of leagues) {
@@ -87,13 +126,44 @@ Deno.serve(async (req) => {
       const name = String(l.league_name ?? l.name ?? "").trim();
       if (!id || !name) continue;
       liveIds.push(id);
-      const start = String(l.league_start_date ?? "").slice(0, 10) || null;
+      const ri = (l.registration_info ?? {}) as Record<string, unknown>;
+      const start = londonDate(utc(l.league_start_date));
+      const enrolEnd = utc(ri.enrolment_end_date)?.toISOString() ?? null;
+      const capacity = Number(ri.number_of_groups ?? 0) * Number(ri.teams_per_group ?? 0) || null;
+      const teamIds = activeTeams(l).map((t) => String(t.team_id ?? "")).filter(Boolean);
       const rr = await fetch(`${SB_URL}/rest/v1/rpc/league_upsert_from_playtomic`, {
         method: "POST", headers: H,
-        body: JSON.stringify({ p_playtomic_id: id, p_name: name, p_kind: kindOf(l), p_status: String(l.league_status ?? ""), p_url: `https://app.playtomic.io/leagues/${id}`, p_start: start }),
+        body: JSON.stringify({
+          p_playtomic_id: id, p_name: name, p_kind: kindOf(l), p_status: String(l.league_status ?? ""),
+          p_url: `https://app.playtomic.io/leagues/${id}`, p_start: start, p_enrol_end: enrolEnd,
+          p_capacity: capacity, p_team_ids: teamIds, p_fetched_at: fetchedAt,
+        }),
       });
-      const teams = Array.isArray(l.registered_teams) ? l.registered_teams.length : l.registered_teams;
-      out.push({ id, name, status: l.league_status, start, teams, kind: kindOf(l), ok: rr.ok, rr: rr.ok ? undefined : await rr.text() });
+      const res = rr.ok ? await rr.json().catch(() => ({})) : null;
+      out.push({ id, name, status: l.league_status, start, enrol_end: enrolEnd, capacity, teams: teamIds.length,
+        kind: kindOf(l), ok: rr.ok, start_kept: res?.start_kept || undefined, rr: rr.ok ? undefined : (await rr.text()).slice(0, 200) });
+    }
+
+    // returning players: active teams in leagues in progress, or finished in the
+    // last few months. Only a complete listing replaces the list.
+    let returning: number | string = "skipped";
+    const past = await listAll(tok, "IN_PROGRESS,PLAYED");
+    if (past) {
+      const now = Date.now();
+      const rows: { player_id: string; league_id: string; expires_at: string }[] = [];
+      for (const l of past) {
+        const end = utc(l.league_end_date);
+        const expires = end ? plusMonths(end, RETURNING_MONTHS) : null;
+        if (l.league_status === "PLAYED" && (!expires || expires.getTime() <= now)) continue;
+        const exp = (expires && expires.getTime() > now ? expires : plusMonths(new Date(), RETURNING_MONTHS)).toISOString();
+        for (const t of activeTeams(l)) {
+          for (const p of t.players ?? []) {
+            if (p.user_id) rows.push({ player_id: String(p.user_id), league_id: String(l.league_id), expires_at: exp });
+          }
+        }
+      }
+      const rp = await fetch(`${SB_URL}/rest/v1/rpc/league_replace_returning`, { method: "POST", headers: H, body: JSON.stringify({ p_rows: rows }) });
+      returning = rp.ok ? await rp.json() : `failed ${rp.status}`;
     }
 
     // leagues Playtomic no longer lists stop taking registrations. Only when the
@@ -101,12 +171,12 @@ Deno.serve(async (req) => {
     let closed: string[] = [];
     if (liveIds.length) {
       const cr = await fetch(
-        `${SB_URL}/rest/v1/leagues?playtomic_league_id=not.is.null&playtomic_league_id=not.in.(${liveIds.join(",")})&or=(registration_open.eq.true,playtomic_status.neq.GONE)&select=name`,
-        { method: "PATCH", headers: { ...H, Prefer: "return=representation" }, body: JSON.stringify({ registration_open: false, playtomic_status: "GONE", synced_at: new Date().toISOString() }) },
+        `${SB_URL}/rest/v1/leagues?playtomic_league_id=not.is.null&playtomic_league_id=not.in.(${liveIds.join(",")})&playtomic_status=neq.GONE&select=name`,
+        { method: "PATCH", headers: { ...H, Prefer: "return=representation" }, body: JSON.stringify({ playtomic_status: "GONE", synced_at: new Date().toISOString() }) },
       );
       closed = cr.ok ? (await cr.json()).map((x: { name: string }) => x.name) : [];
     }
-    return json({ synced: out.length, leagues: out, closed });
+    return json({ synced: out.length, leagues: out, closed, returning });
   } catch (e) {
     return json({ error: String((e as Error).message) }, 502);
   }
