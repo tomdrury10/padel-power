@@ -28,8 +28,7 @@ const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
   document.head.appendChild(css);
   const bar = document.createElement('div');
   bar.className = 'announce';
-  bar.innerHTML = '<b>Pilates Studio and Gym now open</b>' +
-    '<a href="/pilates/">Book Pilates →</a><a href="/gym/">See the Gym →</a>';
+  bar.innerHTML = '<b>Our Pilates Studio is now open</b><a href="/pilates/">Book Pilates →</a>';
   header.prepend(bar);
 })();
 
