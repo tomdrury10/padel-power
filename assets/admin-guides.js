@@ -411,7 +411,7 @@ const GUIDES = [
       'Open Settings and find the Studio rules card.',
       'Beds per class is the capacity of the studio.',
       'Minimum to run is how many bookings a class needs. Below that, it is cancelled automatically at the confirm or cancel point, and everyone is told and refunded.',
-      'Cancel online until is how many hours before a class members can still cancel themselves, normally 24. Cancel short classes at is when a class still under its minimum is cancelled automatically, normally 12 hours before; until then it stays open to book, so a class that reaches 3 by then goes ahead.',
+      'Cancel online until is how many hours before a class members can still cancel themselves, normally 24. Cancel short classes at is when a class still under its minimum is cancelled automatically, normally 12 hours before; until then it stays open to book, so a class that reaches its minimum by then goes ahead.',
       'Late joins close is when online booking finally shuts on a class that is going ahead, normally 1 hour before. Between the two points anyone can still book onto a confirmed class.',
       'Booking window is how far ahead members can book.',
       'Classes per pack, pack price and pack valid for set up the block of classes members buy from their account.',

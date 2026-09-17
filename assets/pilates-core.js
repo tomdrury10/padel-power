@@ -218,7 +218,7 @@ const RULES = {
   cutoffHours: 24,      // online cancellation cutoff
   minCutoffHours: 12,   // a class still under its minimum here is cancelled; until then it stays open to book
   joinCutoffHours: 1,   // a class that is going ahead stays open to join until here
-  minRiders: 3,
+  minRiders: 2,
   maxRiders: 8,
   windowDays: 14,
   packCredits: 6,
