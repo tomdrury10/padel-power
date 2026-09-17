@@ -27,6 +27,11 @@ const PLAYTOMIC = /^https:\/\/([a-z0-9-]+\.)*playtomic\.(io|com)\/.{3,}$/i;
 // so the id is the path segment after /user/; older links may carry a UUID
 // a league or club link pasted by mistake yields no id rather than a wrong one
 const playerIdFrom = (url: string) => (url.match(/\/profile\/user\/([A-Za-z0-9-]+)/) || [null, null])[1];
+// registration ids are interpolated into PostgREST filters, so anything that is
+// not a plain uuid is refused: a '#' would push the user_id filter into the URL
+// fragment, which fetch never sends, and the row would come back unscoped
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const regIdOf = (v: unknown) => { const t = String(v ?? ""); return UUID.test(t) ? t : null; };
 
 const CORS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -281,8 +286,11 @@ Deno.serve(async (req) => {
     }
 
     if (action === "resume" || action === "update_card") {
-      const [reg] = await db(`league_registrations?id=eq.${body.registration_id}&user_id=eq.${user.id}&cancelled_at=is.null&select=*`);
-      if (!reg) return json({ error: "not_found" }, 404);
+      const regId = regIdOf(body.registration_id);
+      if (!regId) return json({ error: "not_found" }, 404);
+      const [reg] = await db(`league_registrations?id=eq.${encodeURIComponent(regId)}&user_id=eq.${encodeURIComponent(user.id)}&cancelled_at=is.null&select=*`);
+      // belt and braces: the owner check must not rest on url building alone
+      if (!reg || reg.user_id !== user.id || reg.cancelled_at) return json({ error: "not_found" }, 404);
       const [league] = await db(`leagues?id=eq.${reg.league_id}&select=*`);
       if (action === "resume" && reg.card_status === "authorised") return json({ error: "already_registered" }, 409);
       if (action === "update_card" && !reg.stripe_subscription_id) return json({ error: "not_found" }, 404);
@@ -298,7 +306,9 @@ Deno.serve(async (req) => {
     // ---------------- admin actions ----------------
     if (["set_membership", "set_price", "stop_billing", "cancel"].includes(action)) {
       if (!(await isAdmin(user.id))) return json({ error: "forbidden" }, 403);
-      const [reg] = await db(`league_registrations?id=eq.${body.registration_id}&select=*`);
+      const regId = regIdOf(body.registration_id);
+      if (!regId) return json({ error: "not_found" }, 404);
+      const [reg] = await db(`league_registrations?id=eq.${encodeURIComponent(regId)}&select=*`);
       if (!reg) return json({ error: "not_found" }, 404);
       const [league] = await db(`leagues?id=eq.${reg.league_id}&select=*`);
 

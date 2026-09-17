@@ -375,7 +375,7 @@ Deno.serve(async (req) => {
       if (res.ok) return new Response("softplay booked", { status: 200 });
       const body = await res.text();
       if (res.status === 409 || body.includes("softplay_bookings_session_uidx")) return await settleExisting("softplay_bookings", s);
-      if (/session_full|session_taken|session_cancelled|session_in_past|already_booked|no_such_session/.test(body)) {
+      if (/session_full|session_taken|session_cancelled|session_in_past|already_booked|no_such_session|cutoff|softplay_closed/.test(body)) {
         console.error(`refunding soft play ${s.id}: ${body}`);
         return await refundAndRecord("softplay_bookings", spBooking, s, "soft play");
       }
@@ -392,7 +392,11 @@ Deno.serve(async (req) => {
     if (res.ok) return new Response("booked", { status: 200 });
     const body = await res.text();
     if (res.status === 409 || body.includes("bookings_stripe_session_uidx")) return await settleExisting("bookings", s);
-    if (/class_full|class_cancelled|class_in_past|already_booked/.test(body)) {
+    // no_such_class is raised for every role, so a slot deleted or re-timed while
+    // the member was paying used to leave a captured payment with no booking and
+    // no refund: retrying could never succeed. cutoff and waiver_required are
+    // listed ready for the trigger fix that makes them bind this insert too.
+    if (/class_full|class_cancelled|class_in_past|already_booked|no_such_class|cutoff|waiver_required/.test(body)) {
       console.error(`refunding ${s.id}: ${body}`);
       return await refundAndRecord("bookings", booking, s, "class");
     }

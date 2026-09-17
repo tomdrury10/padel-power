@@ -106,6 +106,16 @@ Deno.serve(async (req) => {
       );
       const s = await res.json();
       if (!res.ok) return json({ error: "unknown_session" }, 404);
+      // the session id travels in the return URL, so possession of it is not
+      // authority: every session we create carries the buyer's id, and only
+      // they may read the status. Same answer as a session that does not exist,
+      // so this is not an ownership oracle. Sessions with no id recorded (guest
+      // checkout, or anything created before this check) are left readable.
+      const owner = s.metadata?.user_id || "";
+      if (owner) {
+        const viewer = await currentUser(req);
+        if (!viewer || viewer.id !== owner) return json({ error: "unknown_session" }, 404);
+      }
       const paid = s.payment_status === "paid";
 
       if (s.metadata?.type === "pack") {
@@ -142,7 +152,6 @@ Deno.serve(async (req) => {
         booked: rows.length > 0 && !rows[0].refunded_at,
         refunded: rows.length > 0 && !!rows[0].refunded_at,
         class_id: s.metadata?.class_id || null,
-        name: s.metadata?.name || null,
       });
     }
 

@@ -127,6 +127,9 @@ Deno.serve(async (req) => {
     if (state.within_cutoff) return json({ error: "cutoff", cutoff_hours: cutoff }, 409);
 
     const patch: Record<string, unknown> = { cancelled_at: new Date().toISOString() };
+    // say who cancelled, so the credit-pack trigger only adds the goodwill week
+    // when the club cancels a class. Needs migration 022 applied first.
+    if (table === "bookings") patch.cancelled_by = "member";
 
     // card booking: refund first, cancel only if the money moved
     if (byCard) {

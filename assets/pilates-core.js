@@ -80,6 +80,10 @@ const Auth = {
   adoptHashSession() {
     const h = new URLSearchParams(location.hash.replace(/^#/, ''));
     if (!h.get('access_token')) return null;
+    // never merge a new token with the identity already in storage: drop the old
+    // session first so email and user_id are re-read from the token itself (boot
+    // calls loadUser whenever a token has no user_id)
+    localStorage.removeItem(this.key);
     this.save({
       access_token: h.get('access_token'),
       refresh_token: h.get('refresh_token'),
@@ -369,6 +373,9 @@ const Store = {
     return ppFn('refund', { method: 'POST', body: JSON.stringify({ softplay_booking_ids: bookingIds }) });
   },
   async checkoutStatus(sessionId) {
+    // the status read is owner-scoped server-side, so make sure the token is
+    // fresh: Stripe Checkout can sit open long enough for one to lapse
+    await Auth.ensure().catch(() => {});
     return ppFn(`checkout?session=${encodeURIComponent(sessionId)}`);
   },
   // password reset by text. "request" always answers the same, whatever

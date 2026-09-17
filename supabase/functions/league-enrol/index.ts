@@ -263,7 +263,11 @@ Deno.serve(async (req) => {
 
   try {
     if (action === "remove") {
-      const [reg] = await db(`league_registrations?id=eq.${body.registration_id}&select=*`) as Reg[];
+      const regId = String(body.registration_id ?? "");
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(regId)) {
+        return json({ error: "bad_request" }, 400);
+      }
+      const [reg] = await db(`league_registrations?id=eq.${encodeURIComponent(regId)}&select=*`) as Reg[];
       if (!reg?.playtomic_team_id) return json({ ok: true, skipped: "no team" });
       const [league] = await db(`leagues?id=eq.${reg.league_id}&select=playtomic_league_id`);
       if (!league?.playtomic_league_id) return json({ ok: true, skipped: "no league id" });

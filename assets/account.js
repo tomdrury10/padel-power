@@ -12,7 +12,16 @@
   const fmtWhen = d => new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }).format(d);
   const fmtLong = d => new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }).format(d);
   // where to go after signing in: only a path on this site, never a full URL
-  const nextPath = () => { const n = q.get('next') || ''; return /^\/[^/\\]/.test(n) ? n : location.pathname; };
+  // a tab or newline survives the regex but is stripped by the URL parser, which
+  // would turn "/\t/evil.com" into //evil.com, so resolve it and check the origin
+  const nextPath = () => {
+    const raw = (q.get('next') || '').replace(/[\t\n\r]/g, '');
+    if (!/^\/[^/\\]/.test(raw)) return location.pathname;
+    try {
+      const u = new URL(raw, location.origin);
+      return u.origin === location.origin ? u.pathname + u.search + u.hash : location.pathname;
+    } catch { return location.pathname; }
+  };
   const show = id => {
     ['acLoading', 'acAuth', 'acRecover', 'acTokenReset', 'acHome'].forEach(x => { $(x).hidden = x !== id; });
   };
