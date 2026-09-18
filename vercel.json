@@ -1,6 +1,21 @@
 {
   "redirects": [
     {
+      "source": "/soft-play/book",
+      "destination": "/kids-zone/book/",
+      "permanent": true
+    },
+    {
+      "source": "/soft-play/book/",
+      "destination": "/kids-zone/book/",
+      "permanent": true
+    },
+    {
+      "source": "/soft-play/",
+      "destination": "/kids-zone/",
+      "permanent": true
+    },
+    {
       "source": "/soft-play/:path*",
       "destination": "/kids-zone/:path*",
       "permanent": true
