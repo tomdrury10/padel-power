@@ -108,6 +108,26 @@ const Auth = {
     }
     return true;
   },
+  // change the sign-in email. Supabase emails a confirmation link to the new
+  // address (and, with secure email change on, to the old one as well); the
+  // address only switches once the link is tapped. Returns the user record:
+  // new_email set means it is pending, email already equal means it is done.
+  async changeEmail(next) {
+    const token = await this.ensure();
+    if (!token) throw new Error('signed_out');
+    const res = await fetch(`${PP_URL}/auth/v1/user?redirect_to=${encodeURIComponent(PP_SITE + '/account/')}`, {
+      method: 'PUT',
+      headers: { apikey: PP_KEY, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: next }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error_description || data.msg || 'update_failed');
+    if (data.email && !data.new_email) {
+      const s = this.session();
+      if (s) { s.email = data.email; localStorage.setItem(this.key, JSON.stringify(s)); }
+    }
+    return data;
+  },
   // who the token belongs to (fills email / id after a hash session)
   async loadUser() {
     const token = await this.ensure();

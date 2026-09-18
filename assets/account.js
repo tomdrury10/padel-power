@@ -26,6 +26,9 @@
     ['acLoading', 'acAuth', 'acRecover', 'acTokenReset', 'acHome'].forEach(x => { $(x).hidden = x !== id; });
   };
 
+  // a bare message in the hash: the first of the two email change links
+  // was tapped and Supabase is waiting for the other one
+  const hashMsg = new URLSearchParams(location.hash.replace(/^#/, '')).get('message');
   // tokens in the hash: confirmation, magic link or password recovery
   const arrived = Auth.adoptHashSession();
 
@@ -215,6 +218,8 @@
     $('acStaffNote').hidden = !Auth.isStaff();
 
     if (q.get('saved') === 'password') flash('Your new password is saved.');
+    if (arrived === 'email_change') flash(`Your email address is now ${Auth.email()}. Use it to sign in from now on.`);
+    else if (hashMsg) flash(hashMsg);
     if (q.get('pack_session')) await confirmPack(q.get('pack_session'));
 
     renderVerify();
@@ -466,6 +471,33 @@
     $('acWaiver').innerHTML = Member.waiver
       ? `<span class="ac-tag ok">Health questionnaire signed</span><p class="ac-fine">Tell your instructor if anything changes: injuries, pregnancy or a new medical condition.</p>`
       : `<span class="ac-tag">Health questionnaire not yet signed</span><p class="ac-fine">You will be asked to complete it on your first booking. It takes two minutes and we only ask once.</p>`;
+
+    $('acEmailForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      const ef = e.target;
+      const next = ef.ceEmail.value.trim().toLowerCase();
+      if (next === (Auth.email() || '').toLowerCase()) { alert('That is already the email on your account.'); return; }
+      const btn = ef.querySelector('button[type=submit]');
+      btn.disabled = true;
+      try {
+        const u = await Auth.changeEmail(next);
+        ef.reset();
+        if (u.email && u.email.toLowerCase() === next && !u.new_email) {
+          $('acEmail').textContent = next;
+          flash(`Your email address is now ${next}. Use it to sign in from now on.`);
+        } else {
+          $('ceSaved').hidden = false; setTimeout(() => { $('ceSaved').hidden = true; }, 2500);
+          flash(`We have sent a confirmation link to ${next}. Tap it to finish the change. Until then you still sign in with ${Auth.email()}. If a link also lands in your old inbox, tap that one too.`);
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } catch (ex) {
+        const m = String(ex.message);
+        alert(/already|exists|registered/i.test(m) ? 'There is already an account with that email address.'
+          : /valid/i.test(m) ? 'That does not look like a valid email address.'
+          : 'Could not change the email address. ' + m);
+      }
+      btn.disabled = false;
+    });
 
     $('acPass').addEventListener('submit', async e => {
       e.preventDefault();

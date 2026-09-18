@@ -271,6 +271,17 @@
           </div>
           <div class="ac-waiver" id="acWaiver"></div>
           <details class="ac-more">
+            <summary>Change email address</summary>
+            <form class="cform" id="acEmailForm" style="margin-top:14px">
+              <p class="ac-fine" style="margin-top:0">Your email is how you sign in and where your receipts go. We send a confirmation link to the new address, and nothing changes until you tap it.</p>
+              <div><label for="ceEmail">New email</label><input id="ceEmail" name="ceEmail" type="email" autocomplete="email" placeholder="you@email.com" required></div>
+              <div class="ac-row">
+                <button class="btn btn-ghost" type="submit">Send confirmation link</button>
+                <span class="ac-saved" id="ceSaved" hidden>Sent</span>
+              </div>
+            </form>
+          </details>
+          <details class="ac-more">
             <summary>Change password</summary>
             <form class="cform" id="acPass" style="margin-top:14px">
               <div><label for="cpNew">New password</label><input id="cpNew" name="cpNew" type="password" autocomplete="new-password" minlength="8" required></div>
@@ -306,8 +317,8 @@
 </footer>
 
 <script src="../assets/site.js?v=8"></script>
-<script src="../assets/pilates-core.js?v=28"></script>
+<script src="../assets/pilates-core.js?v=29"></script>
 <script src="../assets/phone-verify.js?v=1"></script>
-<script src="../assets/account.js?v=9"></script>
+<script src="../assets/account.js?v=10"></script>
 </body>
 </html>
