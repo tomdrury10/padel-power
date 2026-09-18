@@ -4,8 +4,6 @@
    Step by step articles for the people who use the dashboard.
    Each guide is tagged with the roles it applies to; instructors
    only see the ones they can actually act on.
-   Screenshots live in assets/guides/ and are captured from the
-   dashboard itself with sample data, never real members.
    ============================================================ */
 
 const GUIDE_CATS = ['Getting started', 'Classes', 'Bookings', 'Enquiries', 'Running the studio', 'Leagues', 'Kids Zone'];
@@ -51,7 +49,6 @@ const GUIDES = [
     id: 'reading-schedule',
     cat: 'Getting started',
     roles: ['admin', 'instructor'],
-    shot: 'schedule-admin.png',
     title: 'Reading the schedule',
     intro: 'The Schedule is the week at a glance, six in the morning to nine at night, one column per day. Almost everything you will ever do starts here.',
     steps: [
@@ -86,7 +83,6 @@ const GUIDES = [
     id: 'add-class',
     cat: 'Classes',
     roles: ['admin'],
-    shot: 'addclass-admin.png',
     title: 'Adding a class, once or every week',
     intro: 'Everything to do with classes happens on the Schedule. You can add a one off, or set up a class that repeats every week from now on.',
     steps: [
@@ -108,7 +104,6 @@ const GUIDES = [
     id: 'move-class',
     cat: 'Classes',
     roles: ['admin', 'instructor'],
-    shot: 'editclass-admin.png',
     title: 'Moving a class to a different time or day',
     intro: 'Classes can be moved without losing the people already booked on. They are moved with the class and told automatically.',
     steps: [
@@ -208,12 +203,33 @@ const GUIDES = [
     ],
   },
 
+  {
+    id: 'softplay-settings',
+    cat: 'Kids Zone',
+    roles: ['admin'],
+    title: 'Kids Zone prices, ages and the online switch',
+    intro: 'The card at the bottom of the Kids Zone page. Nothing sells online until the price for that type of session is set and Online booking open is ticked.',
+    steps: [
+      'Every price is per child per hour. A 90 minute session bills one and a half times it, two hours bills double, and that is worked out automatically.',
+      'Supervised price is the weekend one, run by our team. It starts blank on purpose: supervised sessions cannot be sold until it is filled in.',
+      'Unsupervised price is the midweek one, where a parent stays in the room.',
+      'Exclusive hire price is for one booking taking the whole room. Parties and exclusive hire are arranged by email, so this is mostly for bookings you enter at the desk.',
+      'Minimum children to run only applies to supervised sessions: below it, the session is cancelled automatically with refunds at the cancellation cutoff. Unsupervised sessions have no minimum.',
+      'Default capacity is what a new session starts at. You can change it per session when you add one.',
+      'Age from and Age to are shown on the website. Joe is confirming the range, so check with him before changing it.',
+      'Tick Online booking open and press Save Kids Zone settings when you are ready to sell. Until then the page says opening soon and nothing can be bought.',
+    ],
+    notes: [
+      'The website shows whether a session is supervised or not on the list and again on the payment step, so parents cannot miss it.',
+      'The grip socks rule and no food or drink in the play zone are printed on the website. Grip socks are sold at reception.',
+    ],
+  },
+
   /* ---------- Bookings ---------- */
   {
     id: 'see-whos-booked',
     cat: 'Bookings',
     roles: ['admin', 'instructor'],
-    shot: 'schedule-instructor.png',
     title: 'Seeing who is booked onto a class',
     intro: 'Useful before you walk into the studio, so you know who is coming and whether anyone has flagged an injury.',
     steps: [
@@ -250,7 +266,6 @@ const GUIDES = [
     id: 'take-booking',
     cat: 'Bookings',
     roles: ['admin'],
-    shot: 'newbooking-admin.png',
     title: 'Booking someone in at the desk or over the phone',
     intro: 'For when somebody books in person or rings up rather than doing it themselves online.',
     steps: [
@@ -270,7 +285,6 @@ const GUIDES = [
     id: 'remove-booking',
     cat: 'Bookings',
     roles: ['admin'],
-    shot: 'bookings-admin.png',
     title: 'Removing a booking, and what happens to their money',
     intro: 'When one person cannot make it, rather than the whole class being off.',
     steps: [
@@ -289,7 +303,6 @@ const GUIDES = [
     id: 'waivers',
     cat: 'Bookings',
     roles: ['admin', 'instructor'],
-    shot: 'waiver-admin.png',
     title: 'Health waivers',
     intro: 'Everyone signs a health questionnaire once, the first time they book. It is worth a look before you teach somebody new.',
     steps: [
@@ -309,7 +322,6 @@ const GUIDES = [
     id: 'enquiries',
     cat: 'Enquiries',
     roles: ['admin'],
-    shot: 'enquiries-admin.png',
     title: 'Answering an enquiry from the website',
     intro: 'Every message sent through the contact form on the website lands here. The number on the menu is how many are still unanswered.',
     steps: [
@@ -332,7 +344,6 @@ const GUIDES = [
     id: 'overview',
     cat: 'Running the studio',
     roles: ['admin'],
-    shot: 'overview-admin.png',
     title: 'The Overview page',
     intro: 'The first thing you see when you sign in as an admin. It is the day at a glance.',
     steps: [
@@ -347,7 +358,6 @@ const GUIDES = [
     id: 'reports',
     cat: 'Running the studio',
     roles: ['admin'],
-    shot: 'reports-admin.png',
     title: 'Reports: how full classes are and what they make',
     intro: 'Occupancy and money, by class, by class type and by instructor.',
     steps: [
@@ -388,7 +398,6 @@ const GUIDES = [
     id: 'class-types-prices',
     cat: 'Running the studio',
     roles: ['admin'],
-    shot: 'settings-admin.png',
     title: 'Class types and prices',
     intro: 'Class types are the kinds of class you can put on the timetable. Each one can carry a price.',
     steps: [
@@ -431,19 +440,58 @@ const GUIDES = [
     id: 'leagues',
     cat: 'Leagues',
     roles: ['admin'],
-    title: 'Leagues: setup, club members and registrations',
-    intro: 'The padel league side of the dashboard: what a league costs, who counts as a club member, and who has signed up.',
+    title: 'Leagues: what comes from Playtomic and what you set',
+    intro: 'Leagues are created in Playtomic and appear in Studio Manager on their own within the hour. Playtomic owns the name, the start date, the closing time and the number of places. You own the prices, the number of weeks and whether registration is open.',
     steps: [
-      'Open Leagues. League setup is where you set the prices, the start date and the number of weeks for each league.',
-      'Registration stays closed until a league has all three of those, so fill them in before you promote it.',
-      'Club members is the list of players who get the member price, matched on their email or mobile when they register.',
-      'Add somebody with their email or mobile and a note, usually their name.',
-      'The table underneath is everyone who has registered. Search by player, email or mobile, and filter by league or by status.',
-      'The statuses tell you what is holding a registration up: Awaiting partner, Ready for Playtomic, Payment failed, or Card not saved.',
+      'Open Leagues. Each league is a card in League setup. The line under the name tells you when it opens, when it closes and how many places are taken.',
+      'Fill in Member £/week, Non-member £/week and Weeks, then press Save. Until all three are set the card says needs prices and weeks to open, and the league does not appear on the website at all.',
+      'Season starts is read only for a Playtomic league because Playtomic decides it. If it looks wrong, fix it in Playtomic and press Sync now.',
+      'Sync now at the top of the page pulls the latest from Playtomic straight away instead of waiting for the hourly check.',
+      'Club members is the list of players who get the member price, matched on their email or mobile. Players with a club membership on Playtomic get it automatically, so this list is for anyone that misses.',
     ],
     notes: [
-      'Prices are per player per week, and are fixed for a player at the moment they register.',
-      'Anyone not on the club members list pays the non member price. An admin can switch them over before their first payment goes through.',
+      'Prices are per player per week and are fixed for a player at the moment they register.',
+      'The registration page on the website only lists leagues that are open right now. A league that is not ready, or not open yet, is simply not shown.',
+    ],
+  },
+  {
+    id: 'league-windows',
+    cat: 'Leagues',
+    roles: ['admin'],
+    title: 'When registration opens and closes',
+    intro: 'Registration runs itself from the Playtomic start date. You only step in when you want to override it.',
+    steps: [
+      'Registration opens to everyone at 6pm, 21 days before the league starts.',
+      'Players who were in one of our recent leagues get a five day head start, so for them it opens at 6pm, 26 days before. The website checks the Playtomic profile they paste against our last leagues.',
+      'It closes at the enrolment end date set in Playtomic, and closes early on its own when every place is taken. If a place frees up while the window is still open, it reopens on its own.',
+      'The pill on each card shows where it is: Not open yet, Returning players only, Open, Full or Closed.',
+      'Registration set to Automatic (dates and places) does all of the above. Force open ignores the dates and the places. Force closed shuts it whatever the dates say.',
+      'Open to everyone from lets you pick your own date and time for the general opening instead of 21 days before. Leave it blank for the normal rule. The head start still runs five days ahead of whatever you pick.',
+    ],
+    notes: [
+      'A full league still lets a partner join a player who is already registered and waiting for one, so a doubles pair can complete.',
+      'Everything is worked out in UK time, so the 6pm is 6pm here whatever the clocks are doing.',
+    ],
+  },
+  {
+    id: 'league-registrations',
+    cat: 'Leagues',
+    roles: ['admin'],
+    title: 'Registrations, Playtomic and partners',
+    intro: 'The table under League setup is everyone who has registered. Search by player, email or mobile, filter by league or status, and use the Action menu on a row to sort things out.',
+    steps: [
+      'The status says what is holding a registration up: Awaiting partner, Ready for Playtomic, Payment failed or Card not saved.',
+      'Once a player has saved a card they are added to the Playtomic league automatically within 15 minutes, and made a customer in Playtomic Manager with their email and mobile. Customer ✓ on the row means that worked.',
+      'Customer failed means Playtomic refused and the website will try again later. Customer may not have been created means Playtomic answered with a different account, usually a different email: check the customer in Manager, tidy it up, then choose Mark customer sorted.',
+      'Retry Playtomic add is for a registration that got stuck while being added to the league. Mark added to Playtomic is for one you added by hand in Manager.',
+      'Set as member switches a player to the member price before their first payment. Set weekly price changes the price for that one player.',
+      'Copy partner link gives you the link a doubles player sends their partner. Link a partner pairs two registrations yourself, and Unlink partner separates them.',
+      'Stop future payments ends the weekly billing but keeps the player in the league. Cancel registration removes them from the league on Playtomic, ends billing, frees the place and texts them.',
+      'History shows every step that has happened to that registration.',
+    ],
+    notes: [
+      'Players are texted when their registration is confirmed and when it is cancelled. A failed weekly payment texts them a link to update their card.',
+      'The Playtomic link a player pastes is what gets added to the league, so if someone pasted the wrong profile, cancel and ask them to register again with the right one.',
     ],
   },
 ];
@@ -488,11 +536,6 @@ function renderGuides() {
           <div class="gd-body" ${open ? '' : 'hidden'}>
             <p class="gd-intro">${esc(g.intro)}</p>
             <ol class="gd-steps">${(g.steps || []).map(s => `<li>${esc(s)}</li>`).join('')}</ol>
-            ${g.shot ? `<figure class="gd-shot">
-              <img src="../assets/guides/${g.shot}" alt="${esc(g.title)}" loading="lazy">
-              <div class="gd-ph">Screenshot to add: <code>assets/guides/${g.shot}</code></div>
-              <figcaption>Example only. The names shown are not real members.</figcaption>
-            </figure>` : ''}
             ${(g.notes || []).length ? `<div class="gd-notes"><h4>Worth knowing</h4><ul>${g.notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul></div>` : ''}
           </div>
         </article>`;
@@ -500,13 +543,6 @@ function renderGuides() {
     </div>`).join('');
 
   $('gdEmpty').hidden = list.length > 0;
-
-  // a screenshot that has not been added yet shows what to drop in instead
-  $('gdList').querySelectorAll('.gd-shot img').forEach(img => {
-    const miss = () => { img.hidden = true; img.closest('.gd-shot').classList.add('gd-missing'); };
-    img.addEventListener('error', miss);
-    if (img.complete && !img.naturalWidth) miss();
-  });
 
   $('gdList').querySelectorAll('.gd-head').forEach(b =>
     b.addEventListener('click', () => {

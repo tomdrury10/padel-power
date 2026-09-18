@@ -37,7 +37,7 @@ function spRange() {
 async function renderSoftplay() {
   const [from, to] = spRange();
   const [cfg, sessions] = await Promise.all([
-    ppApi('settings?id=eq.1&select=softplay_open,softplay_min_children,softplay_max_children,softplay_hire_price_pence,softplay_supervised_price_pence,softplay_min_age,softplay_max_age,cutoff_hours,join_cutoff_hours'),
+    ppApi('settings?id=eq.1&select=softplay_open,softplay_min_children,softplay_max_children,softplay_hire_price_pence,softplay_unsupervised_price_pence,softplay_supervised_price_pence,softplay_min_age,softplay_max_age,cutoff_hours,join_cutoff_hours'),
     ppApi(`softplay_sessions?session_date=gte.${iso(from)}&session_date=lte.${iso(to)}&select=*&order=session_date,start_time`),
   ]);
   SP.cfg = cfg[0]; SP.sessions = sessions;
@@ -220,6 +220,7 @@ function drawSpSettings() {
   const f = $('spRules'), c = SP.cfg;
   if (!c || (document.activeElement && f.contains(document.activeElement))) return;
   f.spSupervised.value = c.softplay_supervised_price_pence != null ? (c.softplay_supervised_price_pence / 100) : '';
+  f.spUnsupervised.value = (c.softplay_unsupervised_price_pence ?? 500) / 100;
   f.spHire.value = (c.softplay_hire_price_pence ?? 500) / 100;
   f.spMin.value = c.softplay_min_children; f.spMax.value = c.softplay_max_children;
   f.spAgeMin.value = c.softplay_min_age; f.spAgeMax.value = c.softplay_max_age;
@@ -229,12 +230,13 @@ $('spRules').addEventListener('submit', async e => {
   e.preventDefault();
   const f = e.target;
   const body = {
-    softplay_supervised_price_pence: spPence(f.spSupervised.value), softplay_hire_price_pence: spPence(f.spHire.value),
+    softplay_supervised_price_pence: spPence(f.spSupervised.value), softplay_unsupervised_price_pence: spPence(f.spUnsupervised.value),
+    softplay_hire_price_pence: spPence(f.spHire.value),
     softplay_min_children: +f.spMin.value, softplay_max_children: +f.spMax.value,
     softplay_min_age: +f.spAgeMin.value, softplay_max_age: +f.spAgeMax.value, softplay_open: f.spOpen.checked,
   };
   if (body.softplay_open && !body.softplay_supervised_price_pence
-      && !confirm('The supervised price is not set, so supervised sessions cannot be booked online yet. Hire slots will sell. Open anyway?')) return;
+      && !confirm('The supervised price is not set, so supervised sessions cannot be booked online yet. Unsupervised sessions will sell. Open anyway?')) return;
   try {
     await ppApi('settings?id=eq.1', { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(body) });
     $('spRulesSaved').hidden = false; setTimeout(() => { $('spRulesSaved').hidden = true; }, 2000);
