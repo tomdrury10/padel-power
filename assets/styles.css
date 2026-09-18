@@ -103,7 +103,7 @@ nav.links a.active::after{width:100%}
 .nav-cta .btn{padding:13px 24px;font-size:12.5px}
 .burger{display:none;background:none;border:none;color:var(--paper);cursor:pointer;width:44px;height:44px}
 .burger svg{width:26px;height:26px}
-@media(max-width:1180px){
+@media(max-width:1320px){
   nav.links{display:none}
   .burger{display:grid;place-items:center}
   .nav-cta .btn-ghost{display:none}
@@ -1571,7 +1571,7 @@ html.flat img{content-visibility:visible}
 /* nav density fix for 8 links */
 nav.links a{white-space:nowrap}
 @media(max-width:1500px){
-  nav.links{gap:24px;font-size:12.5px}
+  nav.links{gap:20px;font-size:12px}
   .nav-cta .btn-ghost{display:none}
 }
 

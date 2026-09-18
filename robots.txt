@@ -8,8 +8,5 @@ Disallow: /book/
 Disallow: /cancel/
 Disallow: /account/
 
-# draft pages, not launched yet
-Disallow: /gym/
-
 
 Sitemap: https://www.padelpower.uk/sitemap.xml

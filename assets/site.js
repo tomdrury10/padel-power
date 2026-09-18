@@ -23,12 +23,13 @@ const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
     header .announce b{font-weight:700}
     header .announce a{color:var(--ink);text-decoration:underline;text-underline-offset:3px;white-space:nowrap}
     header .announce a:hover,header .announce a:focus-visible{text-decoration-thickness:2px}
+    @media (max-width:720px){header .announce b{display:none}}
     .page-hero{padding-top:clamp(206px,calc(24vh + 36px),286px)}
     @media (max-width:820px){.page-hero{padding-top:176px}}`;
   document.head.appendChild(css);
   const bar = document.createElement('div');
   bar.className = 'announce';
-  bar.innerHTML = '<b>Our Pilates Studio is now open</b><a href="/pilates/">Book Pilates →</a>';
+  bar.innerHTML = '<b>Pilates and the Gym are open · Soft Play opens Sat 26 Sept</b><a href="/pilates/">Book Pilates →</a><a href="/gym/">Join the Gym →</a><a href="/kids-zone/">Book Soft Play →</a>';
   header.prepend(bar);
 })();
 
