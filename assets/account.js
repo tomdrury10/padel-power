@@ -385,7 +385,7 @@
                 ...Member.softplayUpcoming().map(b => ({ t: b.start, html: softplayRow(b, true) }))].sort((a, b) => a.t - b.t);
     $('acUpcoming').innerHTML = up.length
       ? up.map(x => x.html).join('')
-      : `<p class="ac-empty">Nothing booked yet. <a href="../pilates/#book">Pick a class</a> or <a href="../soft-play/#book">book soft play</a>.</p>`;
+      : `<p class="ac-empty">Nothing booked yet. <a href="../pilates/#book">Pick a class</a> or <a href="../kids-zone/#book">book the Kids Zone</a>.</p>`;
     const past = [...Member.past().map(b => ({ t: classStart(b.classId).getTime(), html: bookingRow(b, false) })),
                   ...Member.softplayPast().map(b => ({ t: b.start, html: softplayRow(b, false) }))].sort((a, b) => b.t - a.t);
     $('acPast').innerHTML = past.length
@@ -395,7 +395,7 @@
     $('acUpcoming').querySelectorAll('.ac-cancel[data-kind=softplay]').forEach(btn => btn.addEventListener('click', async () => {
       const b = Member.softplay.find(x => x.id === btn.dataset.id);
       const what = b.paid && b.amount ? `${gbp(b.amount)} will be refunded to your card within 5 to 10 working days.` : '';
-      if (!confirm(`Cancel your soft play booking on ${fmtWhen(new Date(b.start))} at ${b.time}? ${what}`)) return;
+      if (!confirm(`Cancel your Kids Zone booking on ${fmtWhen(new Date(b.start))} at ${b.time}? ${what}`)) return;
       btn.disabled = true; btn.textContent = 'Cancelling…';
       try {
         await Store.cancelMine(b.id);

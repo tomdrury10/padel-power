@@ -229,7 +229,7 @@ const RULES = {
   packPrice: 10000,     // pence
   packMonths: 3,
   // soft play: filled from settings; open=false keeps online booking shut
-  softplay: { open: false, minChildren: 3, maxChildren: 10, hirePrice: 500, supervisedPrice: null, minAge: 3, maxAge: 8 },
+  softplay: { open: false, minChildren: 3, maxChildren: 10, hirePrice: 500, unsupervisedPrice: 500, supervisedPrice: null, minAge: 3, maxAge: 8 },
   requirePhone: false,  // master switch; off until ClickSend is wired up
   codeMinutes: 10,
 };
@@ -551,9 +551,27 @@ function mapSoftplayBooking(r) {
 /* ---------- soft play sessions (public) ---------- */
 const Softplay = {
   sessions: [],   // { id, date, time, duration, mode, capacity, booked, bookings, cancelled, notes }
-  price(s) {
+  // every mode is priced per child per hour, so 90 and 120 minute sessions scale
+  rate(s) {
     const sp = RULES.softplay;
-    return s.mode === 'hire' ? Math.round(sp.hirePrice * s.duration / 60) : sp.supervisedPrice;
+    if (s.mode === 'supervised') return sp.supervisedPrice;
+    if (s.mode === 'unsupervised') return sp.unsupervisedPrice;
+    return sp.hirePrice;
+  },
+  price(s) {
+    const r = this.rate(s);
+    return r ? Math.round(r * s.duration / 60) : null;
+  },
+  // one place for the words, so the page, the booking step and the account agree
+  label(s) {
+    if (s.mode === 'supervised') return 'Supervised session';
+    if (s.mode === 'unsupervised') return 'Unsupervised session';
+    return 'Exclusive hire';
+  },
+  supervision(s) {
+    if (s.mode === 'supervised') return 'Our team looks after the children';
+    if (s.mode === 'unsupervised') return 'A parent or carer stays in the room';
+    return 'A parent or carer stays in the room';
   },
   start(s) { return new Date(`${s.date}T${s.time}:00`); },
   end(s) { return new Date(this.start(s).getTime() + s.duration * 60000); },
@@ -862,6 +880,7 @@ async function ppInit() {
       softplay: {
         open: !!s.softplay_open,
         minChildren: s.softplay_min_children ?? 3, maxChildren: s.softplay_max_children ?? 10,
+        unsupervisedPrice: s.softplay_unsupervised_price_pence ?? 500,
         hirePrice: s.softplay_hire_price_pence ?? 500, supervisedPrice: s.softplay_supervised_price_pence ?? null,
         minAge: s.softplay_min_age ?? 3, maxAge: s.softplay_max_age ?? 8,
       },

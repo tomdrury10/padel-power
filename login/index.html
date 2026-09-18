@@ -35,12 +35,12 @@
   <a class="lg-back" href="../">← Back to the website</a>
 </main>
 
-<script src="../assets/pilates-core.js?v=27"></script>
+<script src="../assets/pilates-core.js?v=28"></script>
 <script>
 (() => {
   // only a path on this site: an absolute URL, a protocol-relative one or a
   // javascript: value all fall back to the admin dashboard. The staff-gated
-  // pages (gym, soft play, admin) all send their own path here.
+  // pages (gym, Kids Zone, admin) all send their own path here.
   const DEFAULT_NEXT = '../admin/';
   const next = (() => {
     const raw = (new URLSearchParams(location.search).get('next') || '').replace(/[\t\n\r]/g, '');

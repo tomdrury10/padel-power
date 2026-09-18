@@ -21,7 +21,8 @@
   if (Auth.userId()) await Member.load().catch(() => {});
 
   const sp = RULES.softplay;
-  const hire = s.mode === 'hire';
+  const hire = s.mode === 'hire';            // exclusive: the whole room
+  const staffed = s.mode === 'supervised';   // our team watches the children
   const price = Softplay.price(s);            // per child, pence
   const day = new Date(s.date + 'T00:00:00');
   const endD = Softplay.end(s);
@@ -29,19 +30,30 @@
   const maxKids = hire ? s.capacity : Math.max(0, s.capacity - s.booked);
   let kids = Math.min(1, maxKids) || 1;
 
-  document.title = `${hire ? 'Soft play hire' : 'Supervised soft play'} · ${fmtFull.format(day)} ${s.time} | Padel Power`;
+  document.title = `${Softplay.label(s)} · ${fmtFull.format(day)} ${s.time} | Padel Power`;
   $('evDate').textContent = `${fmtFull.format(day)} · ${s.time}`;
-  $('evTitle').innerHTML = hire ? 'Hire the<br><span class="blue">soft play</span>' : 'Supervised<br><span class="blue">session</span>';
-  $('evMeta').innerHTML = [`${s.time} to ${end}`, `${s.duration} minutes`, hire ? 'You supervise' : 'Staff supervised', `Up to ${s.capacity} children`].map(x => `<span>${x}</span>`).join('');
+  $('evTitle').innerHTML = hire
+    ? 'Hire the<br><span class="blue">Kids Zone</span>'
+    : staffed ? 'Supervised<br><span class="blue">session</span>' : 'Soft<br><span class="blue">play</span>';
+  $('evMeta').innerHTML = [`${s.time} to ${end}`, `${s.duration} minutes`, Softplay.supervision(s), `Up to ${s.capacity} children`]
+    .map(x => `<span>${x}</span>`).join('');
   $('evDesc').textContent = hire
-    ? `The whole soft play for your crew. ${gbp(sp.hirePrice)} per child per hour, and a parent or carer stays in the soft play with them. Ideal for a couple of families, a playdate or a birthday morning.`
-    : `Drop the children off with a member of our team and go and play, train or sit down with a coffee. Sessions run with a minimum of ${sp.minChildren} children and a maximum of ${s.capacity}.`;
+    ? `The whole Kids Zone for your crew. ${gbp(Softplay.rate(s))} per child per hour, and a parent or carer stays in the room with them.`
+    : staffed
+      ? `Drop the children off with a member of our team and go and play, train or sit down with a coffee. Sessions run with a minimum of ${sp.minChildren} children and a maximum of ${s.capacity}.`
+      : `An unsupervised session: a parent or carer stays in the room and looks after their own children. ${gbp(Softplay.rate(s))} per child per hour, up to ${s.capacity} children in at once.`;
   $('evAges').innerHTML = `${sp.minAge} to ${sp.maxAge}<br><em>Roughly. Ask us if you're not sure</em>`;
   $('evNote').textContent = hire
     ? `Hire slots are yours once paid. Cancel up to ${RULES.cutoffHours} hours before for a full refund.`
-    : `Supervised sessions need ${sp.minChildren} children booked to go ahead. If this one is not going ahead you'll get a text ${RULES.cutoffHours} hours before the start and a full refund.`;
+    : staffed
+      ? `Supervised sessions need ${sp.minChildren} children booked to go ahead. If this one is not going ahead you'll get a text ${RULES.cutoffHours} hours before the start and a full refund.`
+      : `This session is unsupervised, so a parent or carer stays in the room for the whole booking. Cancel up to ${RULES.cutoffHours} hours before for a full refund.`;
   $('evKind').textContent = hire ? 'Hire this slot' : 'Book your places';
-  if (hire) $('spConsentText').textContent = 'I confirm the children are within the age range, and a parent or carer will stay in the soft play and supervise them for the whole session.';
+  if (!staffed) {
+    $('spConsentText').textContent = 'I confirm the children are within the age range, that a parent or carer will stay in the room and supervise them for the whole session, and that everyone will wear grip socks.';
+  } else {
+    $('spConsentText').textContent = 'I confirm the children are within the age range and will wear grip socks, and that our team may contact me on the number on my account during the session.';
+  }
 
   const spotsEl = $('evSpots'), authBox = $('evAuth'), bookBox = $('evBook'), kidsBox = $('evKids');
   const small = document.querySelector('.ev-small');
@@ -66,7 +78,7 @@
   } else if (signedIn && Member.hasSoftplay(s.id)) {
     spotsEl.textContent = 'Booked ✓'; spotsEl.classList.add('ok'); hideAll(); showDone();
   } else if (!sp.open) {
-    lockCard('Soft play booking has not opened yet. Message us on WhatsApp and we will tell you the moment it does.');
+    lockCard('Kids Zone booking has not opened yet. Message us on WhatsApp and we will tell you the moment it does.');
   } else if (!price) {
     lockCard('The price for this session has not been set yet. Check back shortly or message us on WhatsApp.');
   } else if (maxKids <= 0) {
@@ -127,8 +139,8 @@
       else if (msg.includes('phone_unverified')) { await Member.load().catch(() => {}); phoneReady(() => btn.click()); }
       else if (msg.includes('profile_incomplete')) { alert('Add your mobile number to your account first so we can text you.'); location.href = '../../account/#details'; }
       else if (msg.includes('account_required') || msg.includes('JWT') || msg.includes('signed_out')) { Auth.signOut(); location.reload(); }
-      else if (msg.includes('cutoff') || msg.includes('session_in_past')) { alert('Bookings for this session have closed.'); location.href = '../../soft-play/#book'; }
-      else if (msg.includes('softplay_closed')) alert('Soft play booking has not opened yet.');
+      else if (msg.includes('cutoff') || msg.includes('session_in_past')) { alert('Bookings for this session have closed.'); location.href = '../../kids-zone/#book'; }
+      else if (msg.includes('softplay_closed')) alert('Kids Zone booking has not opened yet.');
       else if (msg.includes('price_not_set')) alert('The price for this session has not been set yet. Please try again later.');
       else if (msg.includes('payments_not_configured')) alert('Online payment is not available right now. Please call the club to book.');
       else alert('Something went wrong starting your booking. Please try again.');

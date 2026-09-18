@@ -8,7 +8,7 @@
    dashboard itself with sample data, never real members.
    ============================================================ */
 
-const GUIDE_CATS = ['Getting started', 'Classes', 'Bookings', 'Enquiries', 'Running the studio', 'Leagues', 'Soft play'];
+const GUIDE_CATS = ['Getting started', 'Classes', 'Bookings', 'Enquiries', 'Running the studio', 'Leagues', 'Kids Zone'];
 
 const GUIDES = [
   /* ---------- Getting started ---------- */
@@ -165,33 +165,35 @@ const GUIDES = [
     ],
   },
 
-  /* ---------- Soft play ---------- */
+  /* ---------- Kids Zone ---------- */
   {
     id: 'softplay-sessions',
-    cat: 'Soft play',
+    cat: 'Kids Zone',
     roles: ['admin'],
-    title: 'Putting soft play sessions on the timetable',
-    intro: 'Soft play is booked slot by slot. You decide which slots exist: supervised sessions run by our team, or hire slots where parents book the whole space and supervise themselves.',
+    title: 'Putting Kids Zone sessions on the timetable',
+    intro: 'The Kids Zone is booked slot by slot and you decide which slots exist. Joe\'s pattern is supervised at the weekend, 08:00 to 16:00, and unsupervised midweek, 09:00 to 17:00, where a parent stays in the room. Sessions are 60, 90 or 120 minutes.',
     steps: [
-      'Open Soft play in the left hand menu. It is the same week and month calendar as Pilates: green blocks are supervised sessions, orange are hire slots.',
+      'Open Kids Zone in the left hand menu. It is the same week and month calendar as Pilates.',
       'Press Add sessions.',
-      'Pick the date, start time and length, then choose Supervised session or Hire slot.',
-      'Capacity is the most children that slot takes. For a hire slot it is the most one family or group can bring.',
+      'Pick the date, start time and length (60, 90 or 120 minutes), then choose the type.',
+      'Unsupervised is the midweek one: a shared room, parents stay with their own children. Supervised is the weekend one, run by our team. Exclusive hire gives one booking the whole room, and is normally arranged by email rather than sold online.',
+      'Capacity is the most children that slot takes at once.',
       'Repeat weekly puts the same slot on for the next 4, 8 or 12 weeks in one go.',
-      'Press Add to the timetable. It is on the public soft play page straight away.',
+      'Press Add to the timetable. It is on the public Kids Zone page straight away.',
     ],
     notes: [
-      'Nothing sells online until Online booking open is ticked in the soft play settings and the supervised price is set. Add your sessions first, then flip the switch on opening day.',
-      'Hire is priced per child per hour, so a 90 minute hire slot costs one and a half times the hourly price per child.',
-      'One session per start time. If you need a supervised session and a hire slot at the same time, that is two different times.',
+      'Nothing sells online until Online booking open is ticked in the Kids Zone settings and the price for that type is set. Add your sessions first, then flip the switch on opening day.',
+      'Every type is priced per child per hour, so a 90 minute session costs one and a half times the hourly price and two hours costs double.',
+      'Supervised sessions still need the minimum number of children to go ahead and are cancelled automatically with refunds if they do not get there. Unsupervised sessions have no minimum.',
+      'One session per start time. If you need two different types at the same time, that is two different start times.',
     ],
   },
   {
     id: 'softplay-day',
-    cat: 'Soft play',
+    cat: 'Kids Zone',
     roles: ['admin'],
     title: 'On the day: bookings, check-in and cancelling',
-    intro: 'The soft play calendar works exactly like the Pilates schedule: week or month view, click a session and the panel on the right shows everything about it.',
+    intro: 'The Kids Zone calendar works exactly like the Pilates schedule: week or month view, click a session and the panel on the right shows everything about it.',
     steps: [
       'The list shows each parent, their mobile, how many children and any names they gave, and whether they paid online or are paying at the desk.',
       'Press Check in as each family arrives. The count at the top shows how many children are here.',

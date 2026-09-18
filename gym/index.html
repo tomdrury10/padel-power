@@ -15,6 +15,15 @@
 <link rel="icon" type="image/png" href="../assets/favicon.png">
 <link rel="apple-touch-icon" href="../assets/favicon.png">
 <link rel="stylesheet" href="../assets/styles.css?v=48">
+<style>
+  .gym-join{display:grid;grid-template-columns:260px 1fr;gap:clamp(14px,1.6vw,24px);align-items:stretch}
+  .gym-join .gym-join-steps{grid-template-columns:repeat(2,1fr)}
+  .gym-join-vid{padding:14px 14px 18px;gap:14px;align-items:center;justify-content:space-between}
+  .gym-join-vid video{width:100%;height:auto;display:block;border-radius:12px;background:#000}
+  .gym-join-vid .stat .lbl{text-align:center}
+  @media (max-width:900px){.gym-join{grid-template-columns:1fr}.gym-join-vid{max-width:300px;margin:0 auto;width:100%}}
+  @media (max-width:600px){.gym-join .gym-join-steps{grid-template-columns:1fr}}
+</style>
 </head>
 <body>
 
@@ -123,8 +132,8 @@
         <p>The same high-spec changing rooms and showers the padel players use.</p>
       </div>
       <div class="panel-card">
-        <div class="stat" style="padding:0;border:none"><div class="num">06</div><div class="lbl">Café, parking, soft play</div></div>
-        <p>A bar and café to sit down in after a session, free parking outside, and a <a href="../soft-play/">soft play</a> opening soon for the little ones.</p>
+        <div class="stat" style="padding:0;border:none"><div class="num">06</div><div class="lbl">Café, parking, Kids Zone</div></div>
+        <p>A bar and café to sit down in after a session, free parking outside, and a <a href="../kids-zone/">Kids Zone</a> opening soon for the little ones.</p>
       </div>
     </div>
   </div>
@@ -185,7 +194,14 @@
       <h2 class="h-giant">Two minutes<br><span class="outline">in the app</span></h2>
       <p class="lede">Memberships are sold through the Padel Power app, the same one that earns you loyalty points on court. Sign up, pay and get your entry QR code all in one place.</p>
     </div>
-    <div class="courtcount four rv">
+    <div class="gym-join rv">
+      <div class="panel-card gym-join-vid">
+        <video controls preload="none" playsinline muted poster="../assets/gym-signup-poster.jpg" width="470" height="960">
+          <source src="../assets/gym-signup.mp4" type="video/mp4">
+        </video>
+        <div class="stat" style="padding:0;border:none"><div class="lbl">Watch the sign up, start to finish</div></div>
+      </div>
+      <div class="courtcount four gym-join-steps">
       <div class="panel-card">
         <div class="stat" style="padding:0;border:none"><div class="num">01</div><div class="lbl">Download the app</div></div>
         <p>Get the Padel Power app from the App Store or Google Play using the buttons below. Already have it? Skip to the next step.</p>
@@ -201,6 +217,7 @@
       <div class="panel-card">
         <div class="stat" style="padding:0;border:none"><div class="num">04</div><div class="lbl">Scan and train</div></div>
         <p>Your personal QR code appears in the app. Scan it at the gym entrance and you're in.</p>
+      </div>
       </div>
     </div>
     <div class="ctas store-btns rv" style="margin-top:26px">
@@ -251,7 +268,7 @@
       <details class="faq-item"><summary>How do I get in?<span class="pm">+</span></summary><div class="ans">With the QR code in the Padel Power app. Scan it at the gym entrance each visit. It works across all opening hours, from 5am on weekdays.</div></details>
       <details class="faq-item"><summary>Who are the junior memberships for?<span class="pm">+</span></summary><div class="ans">Juniors aged 14 to 17. Message us on WhatsApp if you are not sure which membership fits.</div></details>
       <details class="faq-item"><summary>Can I look around before joining?<span class="pm">+</span></summary><div class="ans">Yes. Message us on WhatsApp and we'll arrange a time to show you round.</div></details>
-      <details class="faq-item"><summary>Is there parking and somewhere to eat?<span class="pm">+</span></summary><div class="ans">Free parking outside, and a bar and café inside where you can sit down after training. A soft play for the little ones is opening soon.</div></details>
+      <details class="faq-item"><summary>Is there parking and somewhere to eat?<span class="pm">+</span></summary><div class="ans">Free parking outside, and a bar and café inside where you can sit down after training. A Kids Zone for the little ones is opening soon.</div></details>
     </div>
   </div>
 </section>
@@ -314,7 +331,7 @@
 </footer>
 
 <script src="../assets/site.js?v=8"></script>
-<script src="../assets/pilates-core.js?v=27"></script>
+<script src="../assets/pilates-core.js?v=28"></script>
 <script>if(!Auth.session())location.replace('../login/?next='+encodeURIComponent(location.pathname+location.search));</script>
 </body>
 </html>

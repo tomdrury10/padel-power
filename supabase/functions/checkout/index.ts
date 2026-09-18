@@ -232,16 +232,21 @@ Deno.serve(async (req) => {
 
       const [sessions, sp] = await Promise.all([
         db(`softplay_sessions?id=eq.${sessionId}&select=*`),
-        db("settings?id=eq.1&select=softplay_open,softplay_min_children,softplay_hire_price_pence,softplay_supervised_price_pence,cutoff_hours,join_cutoff_hours"),
+        db("settings?id=eq.1&select=softplay_open,softplay_min_children,softplay_hire_price_pence,softplay_unsupervised_price_pence,softplay_supervised_price_pence,cutoff_hours,join_cutoff_hours"),
       ]);
       const sess = sessions[0];
       if (!sess) return json({ error: "no_such_session" }, 404);
       if (sess.cancelled_at) return json({ error: "session_cancelled" }, 409);
       const cfg = sp[0] || {};
       if (!cfg.softplay_open) return json({ error: "softplay_closed" }, 409);
-      const perChild = sess.mode === "hire"
-        ? Number(cfg.softplay_hire_price_pence) * (Number(sess.duration_min) / 60)
-        : Number(cfg.softplay_supervised_price_pence);
+      // every mode is charged per child per hour, so 90 and 120 minute
+      // sessions scale instead of costing the same as an hour
+      const hourly = sess.mode === "supervised"
+        ? Number(cfg.softplay_supervised_price_pence)
+        : sess.mode === "unsupervised"
+          ? Number(cfg.softplay_unsupervised_price_pence)
+          : Number(cfg.softplay_hire_price_pence);
+      const perChild = Math.round(hourly * (Number(sess.duration_min) / 60));
       if (!(perChild > 0)) return json({ error: "price_not_set" }, 409);
 
       const left = hoursUntil(sess.session_date, sess.start_time);
@@ -262,7 +267,11 @@ Deno.serve(async (req) => {
 
       const amount = Math.round(perChild * children);
       const when = `${FMT.format(new Date(`${sess.session_date}T12:00:00`))} at ${sess.start_time}`;
-      const label = sess.mode === "hire" ? "Soft play hire" : "Supervised soft play session";
+      const label = sess.mode === "supervised"
+        ? "Supervised soft play session"
+        : sess.mode === "unsupervised"
+          ? "Soft play session"
+          : "Soft play, exclusive hire";
       const session = await stripe("checkout/sessions", {
         mode: "payment",
         "line_items[0][price_data][currency]": "gbp",

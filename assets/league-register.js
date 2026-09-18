@@ -31,14 +31,21 @@
   ]);
   const ST = Object.fromEntries((states || []).map(x => [x.id, x]));
   const when = ts => new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(ts));
+  // registration opens at 6pm, so the hour matters: "Monday 28 September at 6pm"
+  const whenAt = ts => {
+    const d = new Date(ts);
+    const t = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: 'numeric', minute: '2-digit', hour12: true })
+      .format(d).replace(':00', '').replace(/\s/g, '');
+    return `${when(ts)} at ${t}`;
+  };
   // the server has the final say; this only decides what can be picked
   // a full league stays selectable: a partner joining a waiting player can still get in
   const open = l => ['open', 'early', 'full'].includes((ST[l.id] || {}).state);
   const note = l => {
     const st = ST[l.id] || {};
-    if (st.state === 'early') return ` (returning players only until ${when(st.general_open)})`;
+    if (st.state === 'early') return ` (returning players only until ${whenAt(st.general_open)})`;
     if (st.state === 'full') return ' (full, partners of registered players only)';
-    if (st.state === 'not_yet' && st.early_open) return ` (opens ${when(st.general_open)}, returning players ${when(st.early_open)})`;
+    if (st.state === 'not_yet' && st.early_open) return ` (opens ${whenAt(st.general_open)}, returning players ${whenAt(st.early_open)})`;
     if (st.state === 'open') return '';
     return ' (registration closed)';
   };
@@ -48,12 +55,39 @@
   if (q.get('done') || (mine.length && !q.get('new') && !partnerCode)) return renderMine();
   renderForm();
 
+  /* ================= nothing open yet ================= */
+  function renderClosed() {
+    show('lgForm');
+    $('lgRegForm').hidden = true;
+    const soon = leagues
+      .map(l => ST[l.id] || {})
+      .filter(st => st.state === 'not_yet' && st.general_open)
+      .sort((a, b) => new Date(a.general_open) - new Date(b.general_open))[0];
+    const intro = document.querySelector('#lgForm .ac-intro .lede');
+    if (intro) {
+      intro.innerHTML = soon
+        ? `Registration for the next leagues opens <b>${esc(whenAt(soon.general_open))}</b>${
+            soon.early_open ? `, and from <b>${esc(whenAt(soon.early_open))}</b> for players who were in our last leagues` : ''
+          }. Check back then, or message us on WhatsApp and we will remind you.`
+        : 'League registration is closed at the moment. The next leagues will appear here as soon as they open. Message us on WhatsApp and we will tell you when.';
+    }
+    const note = document.getElementById('lgPartnerNote');
+    if (note) {
+      note.innerHTML = 'Already registered for a league? <a href="../../account/">Your account</a> has your registration and your partner code.';
+      note.hidden = false;
+    }
+  }
+
   /* ================= the form ================= */
   function renderForm() {
     show('lgForm');
     const sel = $('lgLeague');
-    sel.innerHTML = '<option value="">Choose a league</option>' + leagues.map(l =>
-      `<option value="${l.id}"${open(l) ? '' : ' disabled'}>${esc(l.name)}${note(l)}</option>`).join('');
+    // Joe: a league only appears once registration is live. Anything still
+    // waiting for its window, or not ready, is left off the list entirely.
+    const live = leagues.filter(open);
+    if (!live.length) return renderClosed();
+    sel.innerHTML = '<option value="">Choose a league</option>' + live.map(l =>
+      `<option value="${l.id}">${esc(l.name)}${note(l)}</option>`).join('');
     // ?league=mens-doubles from the league cards picks that league for them
     const want = (q.get('league') || '').toLowerCase();
     const slug = n => String(n).toLowerCase().replace(/['’]/g, '').replace(/[^a-z0-9]+/g, '-');

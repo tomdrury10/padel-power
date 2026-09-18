@@ -11,10 +11,16 @@ const spPence = v => v === '' || v == null ? null : Math.round(parseFloat(v) * 1
 const spStart = s => new Date(`${s.session_date}T${s.start_time}:00`);
 const spEnd = s => new Date(spStart(s).getTime() + s.duration_min * 60000);
 const spHHMM = d => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-const spClass = s => s.mode === 'hire' ? 'tc-str' : 'tc-found';
+const spClass = s => s.mode === 'hire' ? 'tc-str' : s.mode === 'unsupervised' ? 'tc-soc' : 'tc-found';
 const spKids = s => SP.bookings.filter(b => b.session_id === s.id && !b.cancelled_at).reduce((n, b) => n + b.children, 0);
 const spBks = s => SP.bookings.filter(b => b.session_id === s.id && !b.cancelled_at);
-const spPrice = s => s.mode === 'hire' ? Math.round((SP.cfg?.softplay_hire_price_pence || 0) * s.duration_min / 60) : SP.cfg?.softplay_supervised_price_pence;
+const spRate = s => s.mode === 'supervised' ? SP.cfg?.softplay_supervised_price_pence
+  : s.mode === 'unsupervised' ? SP.cfg?.softplay_unsupervised_price_pence
+  : SP.cfg?.softplay_hire_price_pence;
+// every mode is per child per hour now, so the length changes the price
+const spPrice = s => { const r = spRate(s); return r ? Math.round(r * s.duration_min / 60) : null; };
+const spModeName = s => s.mode === 'supervised' ? 'Supervised session'
+  : s.mode === 'unsupervised' ? 'Unsupervised session' : 'Exclusive hire';
 
 function spRange() {
   if (SP.view === 'month') {
@@ -81,7 +87,7 @@ function drawSpWeek() {
       const st = spStatus(s);
       return `<button class="d2-ev ${spClass(s)} ${s.cancelled_at ? 'off' : ''} ${SP.sel === s.id ? 'sel' : ''}" style="top:${top + 1}px;height:${height}px" data-id="${s.id}">
         <span class="row"><span class="t">${s.start_time}</span><span class="c ${st.key}">${s.cancelled_at ? 'Cancelled' : spKids(s) + '/' + s.capacity}</span></span>
-        <span class="n">${s.mode === 'hire' ? 'Hire slot' : 'Supervised'}${s.notes ? ' · ' + esc(s.notes) : ''}</span>
+        <span class="n">${spModeName(s)}${s.notes ? ' · ' + esc(s.notes) : ''}</span>
       </button>`;
     }).join('');
     return `<div class="d2-tg-col ${iso(d) === todayIso ? 'today' : ''}" data-date="${iso(d)}" style="height:${colH}px">${blocks}</div>`;
@@ -109,7 +115,7 @@ function drawSpMonth() {
     const past = d < today;
     const chips = SP.sessions.filter(s => s.session_date === iso(d)).map(s => {
       const st = spStatus(s);
-      return `<button class="d2-mev ${spClass(s)} ${s.cancelled_at ? 'off' : ''} ${SP.sel === s.id ? 'sel' : ''}" data-id="${s.id}" title="${s.mode === 'hire' ? 'Hire slot' : 'Supervised session'}${s.notes ? ' · ' + esc(s.notes) : ''}">
+      return `<button class="d2-mev ${spClass(s)} ${s.cancelled_at ? 'off' : ''} ${SP.sel === s.id ? 'sel' : ''}" data-id="${s.id}" title="${spModeName(s)}${s.notes ? ' · ' + esc(s.notes) : ''}">
         <span class="t">${s.start_time}</span><span class="c ${st.key}">${s.cancelled_at ? 'off' : spKids(s) + '/' + s.capacity}</span></button>`;
     }).join('');
     cells.push(`<div class="d2-mg-day ${inMonth ? '' : 'out'} ${past ? 'past' : ''} ${iso(d) === todayIso ? 'today' : ''}"><span class="dn">${d.getDate()}</span>${chips}</div>`);
@@ -140,7 +146,7 @@ function drawSpDetail() {
   el.innerHTML = `
     <div class="d2-det-head">
       <div>
-        <b>${s.mode === 'hire' ? 'Soft play hire' : 'Supervised session'}</b>
+        <b>${spModeName(s)}</b>
         <span>${fmtFull.format(spStart(s))} · ${s.start_time} to ${spHHMM(spEnd(s))} · ${s.duration_min} min${price ? ' · ' + spGbp(price) + '/child' : ' · price not set'}${s.notes ? ' · ' + esc(s.notes) : ''}</span>
       </div>
       <span class="d2-tag st ${st.key}">${st.label}</span>
@@ -196,7 +202,7 @@ function drawSpDetail() {
   const desk = $('spDesk'); if (desk) desk.addEventListener('click', () => openSpDesk(s));
   const cancel = $('spCancel');
   if (cancel) cancel.addEventListener('click', async () => {
-    if (!confirm(`Cancel the ${s.start_time} ${s.mode === 'hire' ? 'hire slot' : 'supervised session'} on ${fmtFull.format(spStart(s))}?${bks.length ? ` ${bks.length} booking${bks.length === 1 ? '' : 's'} will be cancelled, everyone texted and card payments refunded automatically.` : ''}`)) return;
+    if (!confirm(`Cancel the ${s.start_time} ${spModeName(s).toLowerCase()} on ${fmtFull.format(spStart(s))}?${bks.length ? ` ${bks.length} booking${bks.length === 1 ? '' : 's'} will be cancelled, everyone texted and card payments refunded automatically.` : ''}`)) return;
     const reason = prompt('Reason (shown to parents in the text):', 'cancelled by the club') || 'cancelled_by_club';
     try { await ppApi('rpc/cancel_softplay_session', { method: 'POST', body: JSON.stringify({ p_id: s.id, p_reason: reason }) }); } catch (e) { busy(e); }
     renderSoftplay();

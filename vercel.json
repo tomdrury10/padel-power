@@ -1,6 +1,16 @@
 {
   "redirects": [
     {
+      "source": "/soft-play/:path*",
+      "destination": "/kids-zone/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/soft-play",
+      "destination": "/kids-zone",
+      "permanent": true
+    },
+    {
       "source": "/leagues/register/",
       "destination": "/northampton-padel-league/register/",
       "permanent": true

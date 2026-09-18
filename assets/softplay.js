@@ -1,7 +1,7 @@
 /* ============================================================
    Padel Power · Soft play timetable (public)
    Date strip + sessions for the chosen day. Requires pilates-core.js
-   (RULES, Softplay, Auth, Member). Booking happens on soft-play/book/.
+   (RULES, Softplay, Auth, Member). Booking happens on kids-zone/book/.
    ============================================================ */
 (function () {
   const $ = id => document.getElementById(id);
@@ -25,14 +25,15 @@
   function renderList() {
     $('spDayLabel').textContent = fmtFull.format(activeDate);
     const list = Softplay.forDate(iso(activeDate));
-    if (!list.length) { $('spList').innerHTML = '<p class="pempty">No soft play sessions this day. Try another date.</p>'; return; }
+    if (!list.length) { $('spList').innerHTML = '<p class="pempty">No Kids Zone sessions this day. Try another date.</p>'; return; }
     const sp = RULES.softplay;
     $('spList').innerHTML = list.map(s => {
       const price = Softplay.price(s);
       const spaces = Softplay.spaces(s);
       const closed = Softplay.closed(s);
       const mine = Auth.userId() && Member.hasSoftplay(s.id);
-      const hire = s.mode === 'hire';
+      const hire = s.mode === 'hire';          // exclusive: one booking takes the room
+      const staffed = s.mode === 'supervised'; // our team watches the children
       let action;
       if (!sp.open)          action = '<span class="pfull">Opening soon</span>';
       else if (mine)         action = '<span class="pbooked">Booked ✓</span>';
@@ -43,14 +44,16 @@
       const spots = hire
         ? (s.bookings ? 'Already hired' : `Whole space · up to ${s.capacity} children`)
         : (spaces > 0 ? `${spaces} of ${s.capacity} places left` : 'Fully booked');
+      const rate = Softplay.rate(s);
+      const detail = staffed
+        ? `run by our team, needs ${sp.minChildren} children booked to go ahead`
+        : `${gbp(rate)} per child per hour, a parent or carer stays in the room`;
       return `
       <div class="pclass ${(!sp.open || spaces <= 0 || closed) && !mine ? 'off' : ''}">
         <div class="pc-time"><b>${s.time}</b><span>${s.duration} min</span></div>
         <div class="pc-info">
-          <div class="pc-name">${hire ? 'Hire the space' : 'Supervised session'} <span class="pc-level">${hire ? 'You supervise' : 'Staff supervised'}</span></div>
-          <div class="pc-desc">${s.time} to ${endOf(s)} · ${hire
-            ? `${gbp(sp.hirePrice)} per child per hour, a parent or carer stays in the soft play`
-            : `run by our team, needs ${sp.minChildren} children booked to go ahead`}${s.notes ? ' · ' + esc(s.notes) : ''}</div>
+          <div class="pc-name">${Softplay.label(s)} <span class="pc-level">${Softplay.supervision(s)}</span></div>
+          <div class="pc-desc">${s.time} to ${endOf(s)} · ${detail}${s.notes ? ' · ' + esc(s.notes) : ''}</div>
         </div>
         <div class="pc-right">
           <div class="pc-spots ${!hire && spaces > 0 && spaces <= 2 ? 'low' : ''}">${price ? gbp(price) + ' per child · ' : ''}${spots}</div>
@@ -63,7 +66,7 @@
   function renderStrip() {
     const el = $('spStrip');
     if (!RULES.softplay.open) {
-      el.innerHTML = '<span>Soft play is opening soon.</span><a href="https://wa.me/447595250776" target="_blank" rel="noopener">Ask on WhatsApp →</a>';
+      el.innerHTML = '<span>The Kids Zone is opening soon.</span><a href="https://wa.me/447595250776" target="_blank" rel="noopener">Ask on WhatsApp →</a>';
       return;
     }
     if (Auth.userId()) {
