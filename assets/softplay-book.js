@@ -40,19 +40,21 @@
   $('evDesc').textContent = hire
     ? `The whole Kids Zone for your crew. ${gbp(Softplay.rate(s))} per child per hour, and a parent or carer stays in the room with them.`
     : staffed
-      ? `Drop the children off with a member of our team and go and play, train or sit down with a coffee. Sessions run with a minimum of ${sp.minChildren} children and a maximum of ${s.capacity}.`
+      ? `Drop the children off with a member of our qualified team and go and play, train or sit down with a coffee. ${sp.minChildren > 0 ? `Sessions run with a minimum of ${sp.minChildren} children and a maximum of ${s.capacity}.` : `Up to ${s.capacity} children per session.`}`
       : `An unsupervised session: a parent or carer stays in the room and looks after their own children. ${gbp(Softplay.rate(s))} per child per hour, up to ${s.capacity} children in at once.`;
-  $('evAges').innerHTML = `${sp.minAge} to ${sp.maxAge}<br><em>Roughly. Ask us if you're not sure</em>`;
+  $('evAges').innerHTML = `${sp.minAge} to ${sp.maxAge}<br><em>Every child must be toilet trained</em>`;
   $('evNote').textContent = hire
     ? `Hire slots are yours once paid. Cancel up to ${RULES.cutoffHours} hours before for a full refund.`
     : staffed
-      ? `Supervised sessions need ${sp.minChildren} children booked to go ahead. If this one is not going ahead you'll get a text ${RULES.cutoffHours} hours before the start and a full refund.`
+      ? (sp.minChildren > 0
+        ? `Supervised sessions need ${sp.minChildren} children booked to go ahead. If this one is not going ahead you'll get a text ${RULES.cutoffHours} hours before the start and a full refund.`
+        : `Cancel up to ${RULES.cutoffHours} hours before for a full refund. If we ever have to cancel a session you'll get a text and a full refund.`)
       : `This session is unsupervised, so a parent or carer stays in the room for the whole booking. Cancel up to ${RULES.cutoffHours} hours before for a full refund.`;
   $('evKind').textContent = hire ? 'Hire this slot' : 'Book your places';
   if (!staffed) {
-    $('spConsentText').textContent = 'I confirm the children are within the age range, that a parent or carer will stay in the room and supervise them for the whole session, and that everyone will wear grip socks.';
+    $('spConsentText').textContent = 'I confirm the children are within the age range and toilet trained, that a parent or carer will stay in the room and supervise them for the whole session, and that everyone will wear grip socks.';
   } else {
-    $('spConsentText').textContent = 'I confirm the children are within the age range and will wear grip socks, and that our team may contact me on the number on my account during the session.';
+    $('spConsentText').textContent = 'I confirm the children are within the age range, toilet trained and will wear grip socks, and that our team may contact me on the number on my account during the session.';
   }
 
   const spotsEl = $('evSpots'), authBox = $('evAuth'), bookBox = $('evBook'), kidsBox = $('evKids');

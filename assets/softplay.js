@@ -35,7 +35,7 @@
       const hire = s.mode === 'hire';          // exclusive: one booking takes the room
       const staffed = s.mode === 'supervised'; // our team watches the children
       let action;
-      if (!sp.open)          action = '<span class="pfull">Opening soon</span>';
+      if (!sp.open)          action = '<span class="pfull">Booking soon</span>';
       else if (mine)         action = '<span class="pbooked">Booked ✓</span>';
       else if (!price)       action = '<span class="pfull">Price coming</span>';
       else if (spaces <= 0)  action = `<span class="pfull">${hire ? 'Taken' : 'Full'}</span>`;
@@ -46,7 +46,7 @@
         : (spaces > 0 ? `${spaces} of ${s.capacity} places left` : 'Fully booked');
       const rate = Softplay.rate(s);
       const detail = staffed
-        ? `run by our team, needs ${sp.minChildren} children booked to go ahead`
+        ? `run by our qualified team${sp.minChildren > 0 ? `, needs ${sp.minChildren} children booked to go ahead` : ''}`
         : `${gbp(rate)} per child per hour, a parent or carer stays in the room`;
       return `
       <div class="pclass ${(!sp.open || spaces <= 0 || closed) && !mine ? 'off' : ''}">
@@ -66,7 +66,7 @@
   function renderStrip() {
     const el = $('spStrip');
     if (!RULES.softplay.open) {
-      el.innerHTML = '<span>The Kids Zone is opening soon.</span><a href="https://wa.me/447595250776" target="_blank" rel="noopener">Ask on WhatsApp →</a>';
+      el.innerHTML = '<span>The Kids Zone opens Saturday 26 September. Online booking switches on very soon.</span><a href="https://wa.me/447595250776" target="_blank" rel="noopener">Ask on WhatsApp →</a>';
       return;
     }
     if (Auth.userId()) {

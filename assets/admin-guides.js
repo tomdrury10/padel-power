@@ -179,7 +179,7 @@ const GUIDES = [
     notes: [
       'Nothing sells online until Online booking open is ticked in the Kids Zone settings and the price for that type is set. Add your sessions first, then flip the switch on opening day.',
       'Every type is priced per child per hour, so a 90 minute session costs one and a half times the hourly price and two hours costs double.',
-      'Supervised sessions still need the minimum number of children to go ahead and are cancelled automatically with refunds if they do not get there. Unsupervised sessions have no minimum.',
+      'There is no minimum number of children for a session to go ahead: Minimum children to run is 0 in the Kids Zone settings. If you ever set it above 0, supervised sessions below it are cancelled automatically with refunds. Unsupervised sessions never have a minimum.',
       'One session per start time. If you need two different types at the same time, that is two different start times.',
     ],
   },
@@ -197,8 +197,8 @@ const GUIDES = [
       'Cancel session cancels the whole slot: everyone booked is texted and card payments are refunded automatically.',
     ],
     notes: [
-      'Supervised sessions under the minimum are cancelled automatically at the confirm or cancel point (normally 24 hours before), the same as Pilates. Hire slots are never auto-cancelled.',
-      'Once a supervised session has reached its minimum it stays open to book online until the late joins cutoff, normally an hour before.',
+      'With Minimum children to run at 0 (the setting we launched with) nothing is auto-cancelled. If a minimum is ever set, supervised sessions under it are cancelled automatically at the confirm or cancel point (normally 24 hours before), the same as Pilates. Hire slots are never auto-cancelled.',
+      'A supervised session stays open to book online until the late joins cutoff, normally an hour before.',
       'Parents can cancel themselves up to 24 hours before from their account or the link in their text. Inside 24 hours they have to call.',
     ],
   },
@@ -214,9 +214,9 @@ const GUIDES = [
       'Supervised price is the weekend one, run by our team. It starts blank on purpose: supervised sessions cannot be sold until it is filled in.',
       'Unsupervised price is the midweek one, where a parent stays in the room.',
       'Exclusive hire price is for one booking taking the whole room. Parties and exclusive hire are arranged by email, so this is mostly for bookings you enter at the desk.',
-      'Minimum children to run only applies to supervised sessions: below it, the session is cancelled automatically with refunds at the cancellation cutoff. Unsupervised sessions have no minimum.',
+      'Minimum children to run is 0, so no session is cancelled for low numbers. It only ever applies to supervised sessions: if you set it above 0, a supervised session below it is cancelled automatically with refunds at the cancellation cutoff.',
       'Default capacity is what a new session starts at. You can change it per session when you add one.',
-      'Age from and Age to are shown on the website. Joe is confirming the range, so check with him before changing it.',
+      'Age from and Age to are shown on the website. The range is 1 to 6, and every child must be toilet trained.',
       'Tick Online booking open and press Save Kids Zone settings when you are ready to sell. Until then the page says opening soon and nothing can be bought.',
     ],
     notes: [

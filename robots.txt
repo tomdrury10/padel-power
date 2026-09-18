@@ -10,7 +10,6 @@ Disallow: /account/
 
 # draft pages, not launched yet
 Disallow: /gym/
-Disallow: /kids-zone/
 
 
 Sitemap: https://www.padelpower.uk/sitemap.xml

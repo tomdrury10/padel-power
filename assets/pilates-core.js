@@ -229,7 +229,7 @@ const RULES = {
   packPrice: 10000,     // pence
   packMonths: 3,
   // soft play: filled from settings; open=false keeps online booking shut
-  softplay: { open: false, minChildren: 3, maxChildren: 10, hirePrice: 500, unsupervisedPrice: 500, supervisedPrice: null, minAge: 3, maxAge: 8 },
+  softplay: { open: false, minChildren: 0, maxChildren: 10, hirePrice: 500, unsupervisedPrice: 500, supervisedPrice: null, minAge: 1, maxAge: 6 },
   requirePhone: false,  // master switch; off until ClickSend is wired up
   codeMinutes: 10,
 };
@@ -879,10 +879,10 @@ async function ppInit() {
       requirePhone: s.require_phone_verification ?? RULES.requirePhone,
       softplay: {
         open: !!s.softplay_open,
-        minChildren: s.softplay_min_children ?? 3, maxChildren: s.softplay_max_children ?? 10,
+        minChildren: s.softplay_min_children ?? 0, maxChildren: s.softplay_max_children ?? 10,
         unsupervisedPrice: s.softplay_unsupervised_price_pence ?? 500,
         hirePrice: s.softplay_hire_price_pence ?? 500, supervisedPrice: s.softplay_supervised_price_pence ?? null,
-        minAge: s.softplay_min_age ?? 3, maxAge: s.softplay_max_age ?? 8,
+        minAge: s.softplay_min_age ?? 1, maxAge: s.softplay_max_age ?? 6,
       },
       codeMinutes: s.verification_code_minutes ?? RULES.codeMinutes,
     });
