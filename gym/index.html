@@ -16,12 +16,11 @@
 <link rel="apple-touch-icon" href="../assets/favicon.png">
 <link rel="stylesheet" href="../assets/styles.css?v=48">
 <style>
-  .gym-join{display:grid;grid-template-columns:260px 1fr;gap:clamp(14px,1.6vw,24px);align-items:stretch}
+  .gym-join{display:grid;grid-template-columns:250px 1fr;gap:clamp(14px,1.6vw,24px);align-items:stretch}
   .gym-join .gym-join-steps{grid-template-columns:repeat(2,1fr)}
-  .gym-join-vid{padding:14px 14px 18px;gap:14px;align-items:center;justify-content:space-between}
-  .gym-join-vid video{width:100%;height:auto;display:block;border-radius:12px;background:#000}
-  .gym-join-vid .stat .lbl{text-align:center}
-  @media (max-width:900px){.gym-join{grid-template-columns:1fr}.gym-join-vid{max-width:300px;margin:0 auto;width:100%}}
+  .gym-join-vid{border:1px solid var(--line-soft);border-radius:18px;overflow:hidden;background:#000;position:relative}
+  .gym-join-vid video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+  @media (max-width:900px){.gym-join{grid-template-columns:1fr}.gym-join-vid{aspect-ratio:9/16;max-width:320px;margin:0 auto;width:100%}}
   @media (max-width:600px){.gym-join .gym-join-steps{grid-template-columns:1fr}}
 </style>
 </head>
@@ -195,11 +194,10 @@
       <p class="lede">Memberships are sold through the Padel Power app, the same one that earns you loyalty points on court. Sign up, pay and get your entry QR code all in one place.</p>
     </div>
     <div class="gym-join rv">
-      <div class="panel-card gym-join-vid">
-        <video controls preload="none" playsinline muted poster="../assets/gym-signup-poster.jpg" width="470" height="960">
+      <div class="gym-join-vid">
+        <video controls preload="none" playsinline muted poster="../assets/gym-signup-poster.jpg" width="470" height="960" aria-label="Signing up in the Padel Power app, start to finish">
           <source src="../assets/gym-signup.mp4" type="video/mp4">
         </video>
-        <div class="stat" style="padding:0;border:none"><div class="lbl">Watch the sign up, start to finish</div></div>
       </div>
       <div class="courtcount four gym-join-steps">
       <div class="panel-card">
