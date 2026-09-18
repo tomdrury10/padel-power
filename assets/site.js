@@ -29,7 +29,7 @@ const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
   document.head.appendChild(css);
   const bar = document.createElement('div');
   bar.className = 'announce';
-  bar.innerHTML = '<b>Pilates and the Gym are open · Soft Play opens Sat 26 Sept</b><a href="/pilates/">Book Pilates →</a><a href="/gym/">Join the Gym →</a><a href="/kids-zone/">Book Soft Play →</a>';
+  bar.innerHTML = '<b>Pilates and the Gym are open · Kids Zone opens Sat 26 Sept</b><a href="/pilates/">Book Pilates →</a><a href="/gym/">Join the Gym →</a><a href="/kids-zone/">Book the Kids Zone →</a>';
   header.prepend(bar);
 })();
 
