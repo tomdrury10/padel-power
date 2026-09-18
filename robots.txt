@@ -8,5 +8,4 @@ Disallow: /book/
 Disallow: /cancel/
 Disallow: /account/
 
-
 Sitemap: https://www.padelpower.uk/sitemap.xml
